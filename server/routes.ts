@@ -336,46 +336,51 @@ Format the response as a JSON object with these keys:
 
       const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-      const systemPrompt = `You are an expert Mantle blockchain developer assistant specializing in L2 optimization and security analysis. Your role is to:
+      // the newest OpenAI model is "gpt-4o" which was released May 13, 2024
+      const systemPrompt = `You are an expert Solidity smart contract analyzer for the Mantle network. You will help users understand and interact with smart contracts through natural language conversation.
 
-1. FUNCTIONALITY ANALYSIS:
-   - Explain contract functionality in clear, non-technical terms
-   - Identify key features and their business impact
-   - Highlight unique aspects of the implementation
+KEY INSTRUCTIONS:
+1. ALWAYS analyze the provided contract code first
+2. Answer questions based on the actual code implementation
+3. Provide specific examples using actual function names and parameters from the contract
+4. If code examples are needed, use proper Solidity syntax
+5. Focus on Mantle L2 specific optimizations and features
 
-2. MANTLE L2 OPTIMIZATION:
-   - Suggest Mantle-specific optimizations for gas efficiency
-   - Calculate potential gas savings on Mantle vs other L2s
-   - Recommend rollup-aware design patterns
+RESPONSE TYPES:
+1. For general questions about the contract:
+   - Explain the core functionality
+   - Highlight key features
+   - Mention any unique aspects
 
-3. INTERACTION GUIDANCE:
-   - Provide step-by-step function interaction examples
-   - Explain parameter requirements with validation rules
-   - Share best practices for transaction handling
+2. For function-specific questions:
+   Format as JSON:
+   {
+     "type": "function",
+     "functionName": "actualFunctionName",
+     "description": "What the function does",
+     "params": { "paramName": "expectedType" },
+     "gasEstimate": "estimated gas cost",
+     "mantleOptimizations": {
+       "optimizations": ["specific L2 optimization tips"],
+       "savings": "estimated gas savings"
+     }
+   }
 
-4. SECURITY INSIGHTS:
-   - Identify potential vulnerabilities and risks
-   - Suggest security improvements
-   - Explain impact on Mantle's L2 architecture
+3. For security questions:
+   - Identify potential issues in the specific code
+   - Suggest concrete fixes
+   - Reference relevant standards
 
-5. CODE QUALITY:
-   - Recommend Mantle-optimized code patterns
-   - Suggest improvements for better L2 compatibility
-   - Highlight areas for optimization
+4. For contract interaction questions:
+   - Provide exact function call examples
+   - Include parameter formats
+   - Show expected outcomes
 
-Format responses with clear sections, code examples when relevant, and always include:
-1. Main answer/explanation
-2. Mantle-specific context
-3. Practical examples or steps
-4. Security/optimization tips
-
-Use JSON metadata for function calls and gas estimates:
-{
-  "type": "function" | "analysis" | "security" | "optimization",
-  "mantleContext": { "savings": string, "optimizations": string[] },
-  "examples": string[],
-  "securityImpact": string
-}`;
+Remember:
+- Be precise and reference actual code
+- Include code examples when relevant
+- Focus on practical usage
+- Highlight L2-specific considerations`;
 
       const completion = await openai.chat.completions.create({
         model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024
@@ -386,21 +391,71 @@ Use JSON metadata for function calls and gas estimates:
           },
           {
             role: "user",
-            content: `Contract Address: ${address}\nContract Code:\n${contractCode}\nABI:\n${JSON.stringify(contractABI)}\n\nUser Question: ${message}`
+            content: `Contract Address: ${address}
+
+Contract Code:
+${contractCode}
+
+Contract ABI:
+${JSON.stringify(contractABI, null, 2)}
+
+User Question: ${message}
+
+Analyze the contract code above and answer the question. If the question is about function calls or interactions, return the response in JSON format as specified in the system prompt.
+For other types of questions, provide a detailed explanation with relevant code examples.`
           }
         ],
-        temperature: 0.3
+        temperature: 0.3,
+        max_tokens: 2000
       });
 
-      const response = completion.choices[0].message.content;
+      const responseContent = completion.choices[0].message.content;
       
-      // Determine if the response contains code
-      const type = response?.includes("```") ? "code" : "text";
-      
-      res.json({
-        response: response?.replace(/```[a-z]*\n/g, "").replace(/```/g, "").trim(),
-        type
-      });
+      // Process the response content
+      try {
+        // First try to parse as JSON for function-specific responses
+        const parsedJson = JSON.parse(responseContent);
+        res.json({
+          response: responseContent,
+          type: "function",
+          timestamp: new Date().toISOString(),
+          metadata: {
+            functionName: parsedJson.functionName,
+            params: parsedJson.params,
+            gasEstimate: parsedJson.gasEstimate,
+            mantleOptimizations: parsedJson.mantleOptimizations
+          }
+        });
+      } catch (e) {
+        // If not JSON, process as regular text/code response
+        let type = "text";
+        let response = responseContent;
+
+        // Check for code blocks
+        if (responseContent.includes("```")) {
+          type = "code";
+          // Extract code blocks and clean them
+          const codeBlocks = responseContent.match(/```[\s\S]*?```/g) || [];
+          response = codeBlocks
+            .map(block => block.replace(/```[a-z]*\n?/g, "").replace(/```/g, "").trim())
+            .join("\n\n");
+        } 
+        // Check for warnings/errors
+        else if (responseContent.toLowerCase().includes("warning") || 
+                 responseContent.toLowerCase().includes("caution")) {
+          type = "warning";
+        }
+        else if (responseContent.toLowerCase().includes("error") || 
+                 responseContent.toLowerCase().includes("vulnerability")) {
+          type = "error";
+        }
+        
+        res.json({
+          response: response.trim(),
+          type,
+          timestamp: new Date().toISOString()
+        });
+      }
 
     } catch (error) {
       console.error("Chat analysis error:", error);

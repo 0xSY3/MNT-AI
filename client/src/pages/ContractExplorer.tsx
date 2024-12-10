@@ -48,18 +48,18 @@ export default function ContractExplorer() {
 
     try {
       setIsLoading(true);
-      const code = await getContractCode(address);
+      const contractData = await getContractCode(address);
       const abi = await getContractABI(address);
       
-      setContractCode(code);
+      setContractCode(contractData.code);
       setContractABI(abi);
       
       // Show appropriate toast message based on verification status
-      if (code.includes('Not Verified')) {
+      if (!contractData.verified) {
         toast({
           title: "Contract Connected",
-          description: "Contract is not verified. Only bytecode is available.",
-          variant: "destructive"
+          description: contractData.message,
+          variant: "warning"
         });
       } else {
         toast({
@@ -68,19 +68,27 @@ export default function ContractExplorer() {
         });
       }
       
+      // Add initial analysis message
       setMessages([
         {
-          role: "assistant",
-          content: "Contract connected successfully! You can now interact with it.",
+          role: "system",
+          content: contractData.verified 
+            ? "Connected to verified contract. You can now ask questions about its functionality."
+            : "Connected to unverified contract. Analysis will be based on bytecode patterns.",
           timestamp: new Date(),
-          type: "text",
+          type: "text"
         },
         {
           role: "contract",
-          content: code,
+          content: contractData.code,
           timestamp: new Date(),
           type: "code",
-        },
+          metadata: {
+            verified: contractData.verified,
+            message: contractData.message,
+            decompiled: contractData.decompiled
+          }
+        }
       ]);
 
       toast({
@@ -134,13 +142,49 @@ export default function ContractExplorer() {
 
       const data = await response.json();
 
+      // Determine the message type based on content and response type from API
+      let responseType: Message['type'] = 'text';
+      let responseContent = data.response;
+      let metadata = {};
+
+      if (data.type === 'code' || data.response.includes('```')) {
+        responseType = 'code';
+        // Clean up code blocks if present
+        responseContent = data.response.replace(/```[a-z]*\n/g, '').replace(/```/g, '').trim();
+      } else if (data.type === 'function') {
+        responseType = 'function';
+        try {
+          const parsedResponse = JSON.parse(data.response);
+          metadata = {
+            functionName: parsedResponse.functionName,
+            params: parsedResponse.params || {},
+            gasEstimate: parsedResponse.gasEstimate,
+            mantleSpecific: parsedResponse.mantleOptimizations
+          };
+          responseContent = parsedResponse.description || data.response;
+        } catch (e) {
+          // If parsing fails, fallback to text format
+          responseType = 'text';
+        }
+      } else if (data.response.toLowerCase().includes('warning') || 
+                 data.response.toLowerCase().includes('vulnerability')) {
+        responseType = 'warning';
+      } else if (data.response.toLowerCase().includes('error') || 
+                 data.response.toLowerCase().includes('failed')) {
+        responseType = 'error';
+      } else if (data.response.toLowerCase().includes('success') || 
+                 data.response.toLowerCase().includes('completed')) {
+        responseType = 'success';
+      }
+
       setMessages((prev) => [
         ...prev,
         {
           role: 'assistant' as const,
-          content: data.response,
+          content: responseContent,
           timestamp: new Date(),
-          type: (data.type || 'text') as 'text' | 'code' | 'transaction' | 'error',
+          type: responseType,
+          metadata,
         },
       ]);
     } catch (error) {

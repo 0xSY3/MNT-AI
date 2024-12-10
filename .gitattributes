@@ -1,0 +1,10 @@
+# Auto detect text files and perform LF normalization
+* text=auto
+
+# Exclude agent queries and related files from git blame
+*.log -diff
+*.log linguist-generated=true
+*agent* -diff
+*agent* linguist-generated=true
+*Agent* -diff
+*Agent* linguist-generated=true

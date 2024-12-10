@@ -1,0 +1,79 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply font-sans antialiased bg-background text-foreground;
+  }
+}
+
+@layer utilities {
+  .feature-card {
+    @apply rounded-lg border border-border/40 bg-card transition-all duration-300 hover:border-primary/40 hover:shadow-lg;
+  }
+
+  .feature-card:hover {
+    transform: translateY(-2px);
+  }
+
+  .gradient-heading {
+    @apply bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent;
+  }
+
+  .hero-pattern {
+    background-color: hsl(var(--background));
+    background-image: 
+      radial-gradient(circle at 100% 100%, hsl(var(--primary) / 0.15), transparent 400px),
+      radial-gradient(circle at 0% 0%, hsl(var(--primary) / 0.1), transparent 400px);
+  }
+
+  @keyframes patternMove {
+    0% { background-position: 0 0, 15px 15px, 0 0; }
+    100% { background-position: 30px 30px, 45px 45px, 60px 60px; }
+  }
+
+  .neon-glow {
+    text-shadow: 0 0 10px currentColor;
+  }
+
+  .bounce-hover {
+    transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  .bounce-hover:hover {
+    transform: scale(1.03) rotate(1deg);
+  }
+}
+
+.retro-heading {
+  @apply font-bold tracking-tight;
+  background: linear-gradient(120deg, theme('colors.primary.DEFAULT') 0%, theme('colors.primary.DEFAULT/0.7') 100%);
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.retro-border {
+  @apply relative rounded-lg border-2 border-dashed border-primary/40 p-1;
+  background: repeating-linear-gradient(
+    45deg,
+    theme('colors.primary.DEFAULT/0.03'),
+    theme('colors.primary.DEFAULT/0.03') 10px,
+    transparent 10px,
+    transparent 20px
+  );
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-5px); }
+}
+
+.float-animation {
+  animation: float 3s ease-in-out infinite;
+}

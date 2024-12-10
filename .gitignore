@@ -1,0 +1,80 @@
+# Dependencies
+node_modules
+.pnp
+.pnp.js
+
+# Production build files
+dist
+build
+out
+.next
+server/public
+
+# Environment files
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env*.local
+
+# Debug logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# IDE - VSCode
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+# IDE - IntelliJ
+.idea
+*.iml
+*.ipr
+*.iws
+
+# Cache and temp files
+.cache
+.temp
+*.cache
+.eslintcache
+tsconfig.tsbuildinfo
+.tsbuildinfo
+
+# Testing
+coverage
+.nyc_output
+
+# OS files
+.DS_Store
+Thumbs.db
+*.pem
+
+# Build config files
+vite.config.ts.*
+*.config.backup.*
+*.tar.gz
+
+# Misc
+*.log
+*.bak
+.vercel
+.turbo
+
+# Agent-related files and queries
+.agent-temp/
+.agent/
+agent-*.log
+*agent-query*
+*agent*.log
+agent_query_*
+.agent_*
+agent-observation*
+agent-execution*
+# Ignore all agent-related commits and files
+**/*agent*/**
+**/*Agent*/**

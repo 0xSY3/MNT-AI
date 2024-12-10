@@ -210,24 +210,34 @@ export default function ContractExplorer() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card className="border-primary/20">
-          <CardHeader>
-            <CardTitle>Contract Chat</CardTitle>
-            <CardDescription>
+        <Card className="border-primary/20 backdrop-blur-sm bg-background/95">
+          <CardHeader className="space-y-1">
+            <CardTitle className="text-2xl font-bold bg-gradient-to-r from-primary to-primary/50 bg-clip-text text-transparent">
+              Contract Chat
+            </CardTitle>
+            <CardDescription className="text-base">
               Interact with your smart contract through natural language
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="flex gap-2">
-              <Input
-                placeholder="Enter contract address..."
-                value={address}
-                onChange={(e) => setAddress(e.target.value)}
-              />
-              <Button onClick={handleConnect} disabled={isLoading || !address}>
+            <div className="flex gap-3">
+              <div className="relative flex-1 group">
+                <Input
+                  placeholder="Enter contract address..."
+                  value={address}
+                  onChange={(e) => setAddress(e.target.value)}
+                  className="pl-4 h-11 transition-all duration-200 border-primary/20 focus:border-primary/40 bg-background/80 backdrop-blur-sm"
+                />
+                <div className="absolute inset-0 -z-10 bg-gradient-to-r from-primary/10 via-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity rounded-lg" />
+              </div>
+              <Button 
+                onClick={handleConnect} 
+                disabled={isLoading || !address}
+                className="h-11 px-6 hover:shadow-lg hover:shadow-primary/20 transition-all duration-200"
+              >
                 {isLoading ? (
                   <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
                     Connecting...
                   </>
                 ) : (
@@ -236,25 +246,25 @@ export default function ContractExplorer() {
               </Button>
             </div>
 
-            <ScrollArea className="h-[400px] border rounded-md p-4">
-              <div className="space-y-4">
+            <ScrollArea className="h-[500px] border rounded-lg p-4 bg-gradient-to-b from-background to-background/50">
+              <div className="space-y-6">
                 {messages.map((message, index) => (
                   <div
                     key={index}
                     className={`flex ${
                       message.role === "user" ? "justify-end" : "justify-start"
-                    } mb-4`}
+                    } mb-4 animate-in slide-in-from-bottom-2`}
                   >
                     <div
-                      className={`max-w-[85%] space-y-2 ${
+                      className={`max-w-[85%] backdrop-blur-sm transition-all duration-200 ${
                         message.role === "user"
-                          ? "bg-primary text-primary-foreground"
+                          ? "bg-primary text-primary-foreground shadow-lg shadow-primary/20"
                           : message.role === "system"
-                          ? "bg-yellow-500/10 border border-yellow-500/20"
+                          ? "bg-yellow-500/10 border border-yellow-500/20 shadow-lg shadow-yellow-500/10"
                           : message.role === "contract"
-                          ? "bg-card border border-border"
-                          : "bg-muted"
-                      } rounded-lg p-4`}
+                          ? "bg-card/95 border border-border shadow-lg"
+                          : "bg-card/95 border border-border shadow-lg"
+                      } rounded-2xl p-5`}
                     >
                       {message.type === "code" ? (
                         <CodeViewer code={message.content} />
@@ -301,7 +311,58 @@ export default function ContractExplorer() {
                           <p>{message.content}</p>
                         </div>
                       ) : (
-                        <p>{message.content}</p>
+                        <div className="space-y-4 text-foreground">
+                          {message.content.split('###').map((section, index) => {
+                            if (index === 0) {
+                              // Process main content - remove markdown
+                              const mainContent = section
+                                .trim()
+                                .replace(/\*\*/g, '')
+                                .replace(/`/g, '');
+                              return (
+                                <div key={index} className="bg-card/50 rounded-lg p-4">
+                                  <p className="text-base leading-relaxed">{mainContent}</p>
+                                </div>
+                              );
+                            }
+                            
+                            const [title, ...content] = section.split('\n');
+                            const processedTitle = title.trim().replace(/\*\*/g, '');
+                            
+                            return (
+                              <div key={index} className="bg-card/50 rounded-lg p-4">
+                                <h3 className="text-lg font-semibold text-primary mb-3 border-b pb-2">
+                                  {processedTitle}
+                                </h3>
+                                <div className="space-y-3">
+                                  {content.map((paragraph, pIndex) => {
+                                    const processedText = paragraph
+                                      .trim()
+                                      .replace(/\*\*/g, '')
+                                      .replace(/`/g, '');
+                                    
+                                    if (processedText.startsWith('-')) {
+                                      return (
+                                        <div key={pIndex} className="flex items-start space-x-2 pl-4">
+                                          <span className="text-primary">•</span>
+                                          <span className="text-sm leading-relaxed flex-1">
+                                            {processedText.substring(1).trim()}
+                                          </span>
+                                        </div>
+                                      );
+                                    }
+                                    
+                                    return (
+                                      <p key={pIndex} className="text-sm leading-relaxed text-foreground/90">
+                                        {processedText}
+                                      </p>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
                       )}
                       <div className="flex items-center justify-between mt-2 pt-2 border-t border-border/40">
                         <div className="text-xs opacity-70">
@@ -327,25 +388,26 @@ export default function ContractExplorer() {
               </div>
             </ScrollArea>
 
-            <div className="flex gap-2">
+            <div className="flex gap-3 relative group">
               <Textarea
                 placeholder="Ask about the contract or request an action..."
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyPress={(e) => e.key === "Enter" && !e.shiftKey && handleSendMessage()}
-                className="min-h-[80px]"
+                className="min-h-[100px] pr-14 transition-all duration-200 border-primary/20 focus:border-primary/40 bg-background/80 backdrop-blur-sm resize-none"
               />
               <Button
-                className="self-end"
+                className="absolute bottom-3 right-3 h-10 w-10 rounded-full p-0 hover:scale-105 hover:shadow-lg hover:shadow-primary/20 transition-all duration-200"
                 onClick={handleSendMessage}
                 disabled={isLoading || !input.trim() || !address}
               >
                 {isLoading ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <Loader2 className="h-5 w-5 animate-spin" />
                 ) : (
-                  <Send className="h-4 w-4" />
+                  <Send className="h-5 w-5" />
                 )}
               </Button>
+              <div className="absolute inset-0 -z-10 bg-gradient-to-r from-primary/10 via-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity rounded-lg" />
             </div>
           </CardContent>
         </Card>

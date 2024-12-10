@@ -415,9 +415,23 @@ For other types of questions, provide a detailed explanation with relevant code 
       try {
         // First try to parse as JSON for function-specific responses
         const parsedJson = JSON.parse(responseContent);
+        
+        // Convert JSON to human-readable format
+        const humanReadableResponse = `### Function Analysis: ${parsedJson.functionName}
+
+${parsedJson.description}
+
+### Technical Details:
+- Gas Cost: ${parsedJson.gasEstimate}
+${Object.entries(parsedJson.params).map(([key, type]) => `- Parameter: ${key} (${type})`).join('\n')}
+
+### Mantle L2 Optimizations:
+${parsedJson.mantleOptimizations.optimizations.map(opt => `- ${opt}`).join('\n')}
+${parsedJson.mantleOptimizations.savings ? `\nPotential Gas Savings: ${parsedJson.mantleOptimizations.savings}` : ''}`;
+
         res.json({
-          response: responseContent,
-          type: "function",
+          response: humanReadableResponse,
+          type: "analysis",
           timestamp: new Date().toISOString(),
           metadata: {
             functionName: parsedJson.functionName,

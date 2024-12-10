@@ -85,43 +85,7 @@ const FloatingParticles = () => (
   </div>
 );
 
-// Navbar Component
-const Navbar = ({ isScrolled }) => (
-  <nav className={`fixed top-0 left-0 right-0 w-full border-b border-purple-500/10 backdrop-blur-md z-50 
-    transition-all duration-300 ${isScrolled ? 'bg-black/80 py-3' : 'bg-transparent py-4'}`}>
-    <div className="max-w-6xl mx-auto px-6">
-      <div className="flex justify-between items-center">
-        <Link href="/" className="flex items-center space-x-2">
-          <div className="w-8 h-8 rounded-lg bg-purple-500/10 flex items-center justify-center 
-            border border-purple-500/20">
-            <Brain className="w-5 h-5 text-purple-400" />
-          </div>
-          <span className="text-xl font-bold text-white">
-            MNT<span className="text-purple-400">DEV</span>AI
-          </span>
-        </Link>
-
-        <div className="flex items-center space-x-8">
-          {['Studio', 'Docs', 'Pricing'].map((item) => (
-            <Link 
-              key={item}
-              href={`/${item.toLowerCase()}`}
-              className="text-sm font-medium text-white/80 hover:text-purple-400 
-                hover:-translate-y-0.5 transition-all duration-200"
-            >
-              {item}
-            </Link>
-          ))}
-          <button className="px-6 py-2 bg-purple-600/90 text-white font-semibold rounded-xl 
-            shadow-lg shadow-purple-500/20 hover:bg-purple-500 transition-all duration-300 
-            border border-purple-500/30">
-            Connect Wallet
-          </button>
-        </div>
-      </div>
-    </div>
-  </nav>
-);
+import { Navbar } from "@/components/ui/navbar";
 
 // Card Components
 const FeatureCard = ({ href, icon: Icon, title, description, buttonText }) => (
@@ -232,16 +196,16 @@ export default function Home() {
 
       <main className="relative z-10">
         {/* Hero Section */}
-        <section className="pt-32 pb-20">
+        <section className="pt-24 pb-20">
           <div className="max-w-6xl mx-auto px-6">
             <div className="text-center">
-              <div className="inline-block px-3 py-1 mb-6 rounded-full text-sm font-medium 
-                bg-purple-500/10 border border-purple-500/20">
+              <div className="inline-block px-4 py-1.5 mb-4 rounded-full text-sm font-medium 
+                bg-purple-500/10 border border-purple-500/20 animate-in fade-in slide-in-from-bottom-3">
                 <span className="bg-gradient-to-r from-purple-400 to-purple-600 bg-clip-text text-transparent">
                   Powered by AI 🚀
                 </span>
               </div>
-              
+
               <div className="mb-12 space-y-6">
                 <h1 className="text-5xl sm:text-6xl md:text-7xl font-black tracking-tight leading-tight">
                   Smart Contracts with

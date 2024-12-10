@@ -21,8 +21,8 @@ export default function Analytics() {
   
   const { data: analyticsData, isLoading } = useQuery({
     queryKey: ["analytics", timeRange],
-    queryFn: async () => MOCK_DATA, // Replace with actual API call
-    staleTime: 5 * 60 * 1000 // 5 minutes
+    queryFn: async () => MOCK_DATA,
+    staleTime: 5 * 60 * 1000 
   });
 
   return (

@@ -1,94 +1,22 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Code2, BarChart2, FileCode, Users, TestTubeIcon, Brain, Zap } from "lucide-react";
 import { Link } from "wouter";
 
-// Background Components
-const GridBackground = () => (
-  <div className="fixed inset-0 overflow-hidden">
-    <div className="absolute inset-0 bg-gradient-to-b from-[#030303] to-[#050508]" />
-    <div className="absolute inset-0" style={{
-      backgroundImage: `
-        linear-gradient(90deg, rgba(147, 51, 234, 0.12) 1px, transparent 1px),
-        linear-gradient(0deg, rgba(147, 51, 234, 0.12) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(147, 51, 234, 0.08) 1px, transparent 1px),
-        linear-gradient(0deg, rgba(147, 51, 234, 0.08) 1px, transparent 1px)
-      `,
-      backgroundSize: '32px 32px, 32px 32px, 8px 8px, 8px 8px'
-    }} />
-  </div>
-);
-
-// Animated Lines Effect
-const ScrollLines = () => {
-  const [scrollY, setScrollY] = useState(0);
-
-  useEffect(() => {
-    const handleScroll = () => {
-      setScrollY(window.scrollY);
-    };
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
-
-  return (
-    <div className="fixed inset-0 pointer-events-none overflow-hidden">
-      {/* Left side lines */}
-      <div className="absolute left-16 top-0 bottom-0 w-px opacity-20">
-        {[...Array(5)].map((_, i) => (
-          <div
-            key={`left-${i}`}
-            className="absolute w-full h-32 bg-gradient-to-b from-transparent via-purple-500 to-transparent"
-            style={{
-              top: `${((scrollY * (0.5 + i * 0.1)) % 500) - 100}px`,
-              opacity: 0.5 - i * 0.1,
-              transition: 'top 0.1s linear'
-            }}
-          />
-        ))}
-      </div>
-
-      {/* Right side lines */}
-      <div className="absolute right-16 top-0 bottom-0 w-px opacity-20">
-        {[...Array(5)].map((_, i) => (
-          <div
-            key={`right-${i}`}
-            className="absolute w-full h-32 bg-gradient-to-b from-transparent via-purple-500 to-transparent"
-            style={{
-              bottom: `${((scrollY * (0.5 + i * 0.1)) % 500) - 100}px`,
-              opacity: 0.5 - i * 0.1,
-              transition: 'bottom 0.1s linear'
-            }}
-          />
-        ))}
-      </div>
-    </div>
-  );
-};
-
-// Floating Particles
-const FloatingParticles = () => (
-  <div className="fixed inset-0 pointer-events-none">
-    {[...Array(20)].map((_, i) => (
-      <div
-        key={i}
-        className="absolute w-1 h-1 rounded-full bg-purple-500/30"
-        style={{
-          top: `${Math.random() * 100}%`,
-          left: `${Math.random() * 100}%`,
-          animation: `float ${5 + Math.random() * 5}s ease-in-out infinite`,
-          animationDelay: `${Math.random() * 5}s`
-        }}
-      />
-    ))}
-  </div>
-);
-
+import { GridBackground, ScrollLines, FloatingParticles } from "@/components/ui/background-effects";
 import { Navbar } from "@/components/ui/navbar";
 
+interface FeatureCardProps {
+  href: string;
+  icon: React.ElementType;
+  title: string;
+  description: string;
+  buttonText: string;
+}
+
 // Card Components
-const FeatureCard = ({ href, icon: Icon, title, description, buttonText }) => (
+const FeatureCard = ({ href, icon: Icon, title, description, buttonText }: FeatureCardProps) => (
   <Link href={href}>
     <Card className="h-full bg-purple-900/10 border border-purple-500/20 backdrop-blur-sm 
       hover:-translate-y-1 transition-all duration-300">
@@ -115,7 +43,13 @@ const FeatureCard = ({ href, icon: Icon, title, description, buttonText }) => (
   </Link>
 );
 
-const StatCard = ({ value, label, icon: Icon }) => (
+interface StatCardProps {
+  value: string;
+  label: string;
+  icon: React.ElementType;
+}
+
+const StatCard = ({ value, label, icon: Icon }: StatCardProps) => (
   <div className="p-6 rounded-2xl bg-purple-900/10 border border-purple-500/20 backdrop-blur-sm 
     hover:scale-105 transition-all duration-300">
     <div className="flex flex-col items-center text-center">

@@ -2,6 +2,14 @@ import { ethers } from 'ethers';
 
 // Initialize provider for Mantle network
 const provider = new ethers.JsonRpcProvider('https://rpc.mantle.xyz');
+
+export interface ContractData {
+  code: string;
+  verified: boolean;
+  message: string;
+  decompiled?: string;
+}
+
 async function decompileBytecode(bytecode: string): Promise<string> {
   // TODO: Implement actual decompilation logic
   // For now, return formatted bytecode with function signatures
@@ -25,7 +33,7 @@ ${functionSignatures}
 ${chunks.join('\n')}`;
 }
 
-export async function getContractCode(address: string): Promise<string> {
+export async function getContractCode(address: string): Promise<ContractData> {
   try {
     // Validate address format
     if (!ethers.isAddress(address)) {
@@ -95,13 +103,6 @@ export async function getContractCode(address: string): Promise<string> {
       console.warn('Failed to get contract code:', error);
       throw new Error(`Failed to fetch contract: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
-
-    // If we couldn't get verified source, provide a more informative message
-    return `// Contract Source Not Verified\n// Address: ${address}\n\n` +
-           `/*\nThis contract's source code has not been verified on Mantle Explorer.\n` +
-           `To view the contract's source code, please verify it on Mantle Explorer:\n` +
-           `https://explorer.mantle.xyz/address/${address}\n*/\n\n` +
-           `// Contract Bytecode:\n${code}`;
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
     throw new Error(`Failed to fetch contract: ${errorMessage}`);

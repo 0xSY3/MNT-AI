@@ -10,7 +10,7 @@ import Home from "./pages/Home";
 import ContractBuilder from "./pages/ContractBuilder";
 import Decoder from "./pages/Decoder";
 import Templates from "./pages/Templates";
-import Forum from "./pages/Forum";
+import MNTAIAssistant from "@/components/MNTAIAssistant";
 import ContractExplorer from "./pages/ContractExplorer";
 import TestSuiteGenerator from "./pages/TestSuiteGenerator";
 
@@ -24,7 +24,7 @@ function Router() {
           <Route path="/contract-builder" component={ContractBuilder} />
           <Route path="/decoder" component={Decoder} />
           <Route path="/templates" component={Templates} />
-          <Route path="/forum" component={Forum} />
+          <Route path="/assistant" component={MNTAIAssistant} />
           <Route path="/explorer" component={ContractExplorer} />
           <Route path="/test-suite" component={TestSuiteGenerator} />
           <Route>404 Page Not Found</Route>

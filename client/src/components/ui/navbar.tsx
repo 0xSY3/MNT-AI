@@ -1,6 +1,7 @@
 import { Link } from "wouter";
 import { Brain } from "lucide-react";
 import { useState, useEffect } from "react";
+import { WalletConnector } from "../WalletConnector";
 
 interface NavbarProps {
   isScrolled?: boolean;
@@ -47,11 +48,7 @@ export function Navbar({ isScrolled = false }: NavbarProps) {
                 {item}
               </Link>
             ))}
-            <button className="px-6 py-2 bg-purple-600/90 text-white font-semibold rounded-xl 
-              shadow-lg shadow-purple-500/20 hover:bg-purple-500 transition-all duration-300 
-              border border-purple-500/30">
-              Connect Wallet
-            </button>
+            <WalletConnector />
           </div>
         </div>
       </div>

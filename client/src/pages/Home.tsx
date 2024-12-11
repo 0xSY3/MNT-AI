@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, Code2, BarChart2, FileCode, Users, TestTubeIcon, Brain, Zap } from "lucide-react";
+import { ArrowRight, Code2, BarChart2, FileCode, Shield, TestTubeIcon, Brain, Zap } from "lucide-react";
 import { Link } from "wouter";
 
 import { GridBackground, ScrollLines, FloatingParticles } from "@/components/ui/background-effects";
@@ -113,11 +113,11 @@ export default function Home() {
       buttonText: "Generate Tests"
     },
     {
-      href: "/forum",
-      icon: Users,
-      title: "Community",
-      description: "Connect with other developers and get help",
-      buttonText: "Join Discussion"
+      href: "/assistant",
+      icon: Brain,
+      title: "MNT AI Assistant",
+      description: "Get instant help with Mantle development",
+      buttonText: "Chat Now"
     }
   ];
 
@@ -154,9 +154,9 @@ export default function Home() {
               </div>
 
               <div className="grid grid-cols-3 gap-6 max-w-3xl mx-auto mb-16">
-                <StatCard value="1000+" label="AI Powered Apps" icon={Brain} />
-                <StatCard value="5x" label="Faster Development" icon={Zap} />
-                <StatCard value="24/7" label="AI Support" icon={Users} />
+                <StatCard value="100%" label="Code Coverage" icon={Shield} />
+                <StatCard value="50%" label="Gas Optimized" icon={Zap} />
+                <StatCard value="24/7" label="AI Analysis" icon={Brain} />
               </div>
             </div>
           </div>

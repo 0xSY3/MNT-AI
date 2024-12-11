@@ -3,8 +3,11 @@ import { db } from "../db";
 import { contracts } from "@db/schema";
 import OpenAI from "openai";
 import { ethers } from 'ethers';
+import aiRouter from './routes/ai';
 
 export function registerRoutes(app: Express) {
+  // Register AI Assistant routes
+  app.use('/api/ai', aiRouter);
   // AI Contract Generation
   app.post("/api/ai/generate", async (req, res) => {
     try {
@@ -40,7 +43,7 @@ Return ONLY the Solidity contract code without any comments or documentation.`;
 Description: ${description}
 
 Features:
-${features.map(f => `- ${f}`).join('\n')}
+${features.map((f: string) => `- ${f}`).join('\n')}
 
 Follow this exact format:
 
@@ -82,7 +85,7 @@ Return ONLY the complete Solidity contract code.`;
       const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
       const completion = await openai.chat.completions.create({
-        model: "gpt-4o",
+        model: "gpt-4",
         messages: [
           {
             role: "system",
@@ -93,13 +96,16 @@ Return ONLY the complete Solidity contract code.`;
             content: userPrompt
           }
         ],
-        temperature: 0.2, // Lower temperature for more consistent output
+        temperature: 0.2,
         max_tokens: 3000,
         presence_penalty: 0.1,
         frequency_penalty: 0.1
       });
 
-      let generatedCode = completion.choices[0].message.content || '';
+      let generatedCode = completion.choices[0].message.content;
+      if (!generatedCode) {
+        throw new Error("No code was generated");
+      }
 
       // Clean up any formatting artifacts
       generatedCode = generatedCode.trim()
@@ -204,7 +210,7 @@ Format the response as a JSON object with these keys:
 }`;
 
       const completion = await openai.chat.completions.create({
-        model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024
+        model: "gpt-4",
         messages: [
           {
             role: "system",
@@ -237,6 +243,7 @@ Format the response as a JSON object with these keys:
       });
     }
   });
+  
   // Contract Decoder endpoint
   app.post("/api/decoder/analyze", async (req, res) => {
     try {
@@ -254,34 +261,74 @@ Format the response as a JSON object with these keys:
         });
       }
 
-      // Initialize OpenAI
+      // Initialize OpenAI and provider
       const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-
-      // Get the contract code from Mantle network
       const provider = new ethers.JsonRpcProvider('https://rpc.mantle.xyz');
       
-      // Get contract code
-      const contractCode = await provider.getCode(address);
+      let contractCode;
+      let transactionData;
       
-      if (contractCode === '0x') {
-        return res.status(404).json({
-          error: "No contract found at this address"
-        });
+      // Check if input is a transaction hash (66 characters long, starts with 0x)
+      if (address.length === 66 && address.startsWith('0x')) {
+        try {
+          // Get transaction data
+          const tx = await provider.getTransaction(address);
+          if (!tx) {
+            return res.status(404).json({
+              error: "Transaction not found"
+            });
+          }
+          
+          // Get contract code from the "to" address if it exists
+          if (tx.to) {
+            contractCode = await provider.getCode(tx.to);
+          }
+          
+          // Include transaction data in response
+          transactionData = {
+            from: tx.from,
+            to: tx.to,
+            value: tx.value.toString(),
+            data: tx.data,
+            gasLimit: tx.gasLimit.toString(),
+            gasPrice: tx.gasPrice?.toString(),
+          };
+        } catch (error) {
+          return res.status(400).json({
+            error: "Invalid transaction hash or transaction not found"
+          });
+        }
+      } else {
+        // Treat as contract address
+        try {
+          contractCode = await provider.getCode(address);
+          if (contractCode === '0x') {
+            return res.status(404).json({
+              error: "No contract found at this address"
+            });
+          }
+        } catch (error) {
+          return res.status(400).json({
+            error: "Invalid contract address"
+          });
+        }
       }
 
       // Create a system prompt for contract analysis
-      const systemPrompt = `You are an expert smart contract analyzer. Analyze the given smart contract code and provide:
-1. A brief, human-readable summary of what the contract does
-2. Key features and functionality
-3. Any potential security considerations
+      const systemPrompt = `You are an expert smart contract analyzer specializing in Ethereum and Layer 2 contracts. Your task is to:
+1. Analyze the given smart contract code thoroughly
+2. Provide a clear, professional summary of its purpose and functionality
+3. List key features and security considerations
 
-Format the response as a JSON object with these keys:
-- summary: A concise explanation of the contract's purpose
-- features: An array of key features and functions`;
+Format your response as a clean, well-formatted JSON object with these keys:
+- summary: A clear, concise explanation (1-2 sentences) starting with "This smart contract..."
+- features: An array of key features, each starting with an action verb in present tense
+
+Keep the language professional, precise, and free of technical jargon where possible.`;
 
       // Get AI analysis of the contract
       const completion = await openai.chat.completions.create({
-        model: "gpt-4o", // Using the latest GPT-4 model
+        model: "gpt-4",
         messages: [
           {
             role: "system",
@@ -292,7 +339,7 @@ Format the response as a JSON object with these keys:
             content: "Analyze this smart contract:\n\n" + contractCode
           }
         ],
-        temperature: 0.3,
+        temperature: 0.2,
         response_format: { type: "json_object" }
       });
 
@@ -302,11 +349,34 @@ Format the response as a JSON object with these keys:
       }
       const analysis = JSON.parse(content);
 
-      res.json({
-        contractCode,
-        summary: analysis.summary,
-        features: analysis.features
+      // Clean and format the summary text
+      let formattedSummary = analysis.summary.trim();
+      if (!formattedSummary.startsWith("This")) {
+        formattedSummary = "This smart contract " + formattedSummary.toLowerCase();
+      }
+      
+      // Format features array ensuring clean text and proper capitalization
+      const formattedFeatures = analysis.features.map((feature: string) => {
+        feature = feature.trim();
+        return feature.charAt(0).toUpperCase() + feature.slice(1);
       });
+
+      // Prepare response object
+      const response: any = {};
+      
+      // Include transaction data if available
+      if (transactionData) {
+        response.transaction = transactionData;
+      }
+      
+      // Include contract analysis if contract code is available
+      if (contractCode && contractCode !== '0x') {
+        response.contractCode = contractCode;
+        response.summary = formattedSummary;
+        response.features = formattedFeatures;
+      }
+      
+      res.json(response);
 
     } catch (error) {
       console.error("Contract analysis error:", error);
@@ -336,7 +406,6 @@ Format the response as a JSON object with these keys:
 
       const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-      // the newest OpenAI model is "gpt-4o" which was released May 13, 2024
       const systemPrompt = `You are an expert Solidity smart contract analyzer for the Mantle network. You will help users understand and interact with smart contracts through natural language conversation.
 
 KEY INSTRUCTIONS:
@@ -383,7 +452,7 @@ Remember:
 - Highlight L2-specific considerations`;
 
       const completion = await openai.chat.completions.create({
-        model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024
+        model: "gpt-4",
         messages: [
           {
             role: "system",
@@ -414,7 +483,10 @@ For other types of questions, provide a detailed explanation with relevant code 
       // Process the response content
       try {
         // First try to parse as JSON for function-specific responses
-        const parsedJson = JSON.parse(responseContent);
+        const parsedJson = responseContent ? JSON.parse(responseContent) : null;
+        if (!parsedJson) {
+          throw new Error("No response content to parse");
+        }
         
         // Convert JSON to human-readable format
         const humanReadableResponse = `### Function Analysis: ${parsedJson.functionName}
@@ -426,7 +498,7 @@ ${parsedJson.description}
 ${Object.entries(parsedJson.params).map(([key, type]) => `- Parameter: ${key} (${type})`).join('\n')}
 
 ### Mantle L2 Optimizations:
-${parsedJson.mantleOptimizations.optimizations.map(opt => `- ${opt}`).join('\n')}
+${parsedJson.mantleOptimizations.optimizations.map((opt: string) => `- ${opt}`).join('\n')}
 ${parsedJson.mantleOptimizations.savings ? `\nPotential Gas Savings: ${parsedJson.mantleOptimizations.savings}` : ''}`;
 
         res.json({
@@ -446,7 +518,7 @@ ${parsedJson.mantleOptimizations.savings ? `\nPotential Gas Savings: ${parsedJso
         let response = responseContent;
 
         // Check for code blocks
-        if (responseContent.includes("```")) {
+        if (responseContent?.includes("```")) {
           type = "code";
           // Extract code blocks and clean them
           const codeBlocks = responseContent.match(/```[\s\S]*?```/g) || [];
@@ -455,17 +527,17 @@ ${parsedJson.mantleOptimizations.savings ? `\nPotential Gas Savings: ${parsedJso
             .join("\n\n");
         } 
         // Check for warnings/errors
-        else if (responseContent.toLowerCase().includes("warning") || 
-                 responseContent.toLowerCase().includes("caution")) {
+        else if (responseContent?.toLowerCase().includes("warning") || 
+                 responseContent?.toLowerCase().includes("caution")) {
           type = "warning";
         }
-        else if (responseContent.toLowerCase().includes("error") || 
-                 responseContent.toLowerCase().includes("vulnerability")) {
+        else if (responseContent?.toLowerCase().includes("error") || 
+                 responseContent?.toLowerCase().includes("vulnerability")) {
           type = "error";
         }
         
         res.json({
-          response: response.trim(),
+          response: response?.trim() || "",
           type,
           timestamp: new Date().toISOString()
         });
@@ -545,7 +617,7 @@ Format the response as a JSON array of test objects:
 Use Hardhat/Chai syntax for tests. Include comments explaining test logic.`;
 
       const completion = await openai.chat.completions.create({
-        model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024
+        model: "gpt-4",
         messages: [
           {
             role: "system",

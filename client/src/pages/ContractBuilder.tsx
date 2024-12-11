@@ -22,6 +22,7 @@ export default function ContractBuilder() {
   const [code, setCode] = useState("");
   const { toast } = useToast();
   const [isScrolled, setIsScrolled] = useState(false);
+
   const [newFeature, setNewFeature] = useState("");
 
   useEffect(() => {
@@ -54,10 +55,10 @@ export default function ContractBuilder() {
           contractType: "standard"
         })
       });
-
+      
       let errorText;
       let responseData;
-
+      
       try {
         responseData = await response.json();
         if (!response.ok) {
@@ -100,7 +101,7 @@ export default function ContractBuilder() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ code })
       });
-
+      
       if (!response.ok) {
         const errorText = await response.text();
         throw new Error(errorText || "Compilation failed");
@@ -130,17 +131,28 @@ export default function ContractBuilder() {
       <Navbar isScrolled={isScrolled} />
 
       <main className="relative z-10">
-        <section className="pt-20 pb-12">
+        <section className="pt-24 pb-20">
           <div className="max-w-6xl mx-auto px-6">
-            <div className="text-center mb-8">
-              <h1 className="text-4xl font-bold tracking-tight leading-none mb-3">
+            <div className="text-center">
+              <div className="inline-block px-4 py-1.5 mb-4 rounded-full text-sm font-medium 
+                bg-purple-500/10 border border-purple-500/20 animate-in fade-in slide-in-from-bottom-3">
                 <span className="bg-gradient-to-r from-purple-400 to-purple-600 bg-clip-text text-transparent">
-                  Contract Builder
+                  AI-Powered Smart Contracts 🚀
                 </span>
-              </h1>
-              <p className="text-lg text-gray-400 max-w-2xl mx-auto">
-                Build secure smart contracts with AI assistance on Mantle Network
-              </p>
+              </div>
+
+              <div className="mb-12 space-y-6">
+                <h1 className="text-5xl sm:text-6xl font-black tracking-tight leading-tight">
+                  Smart Contract
+                  <br />
+                  <span className="bg-gradient-to-r from-purple-400 to-purple-600 bg-clip-text text-transparent">
+                    Builder
+                  </span>
+                </h1>
+                <p className="text-xl text-gray-400 max-w-2xl mx-auto">
+                  Build secure smart contracts with AI assistance on Mantle Network
+                </p>
+              </div>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -269,7 +281,7 @@ export default function ContractBuilder() {
                     </div>
                   </CardContent>
                 </Card>
-
+                
                 <Card className="border-purple-500/20 bg-purple-900/10 backdrop-blur-sm">
                   <CardHeader>
                     <CardTitle className="text-white">Contract Metrics</CardTitle>

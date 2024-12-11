@@ -1,0 +1,6 @@
+# Ignore automated commits
+# Ignore all agent-related commits
+# Add specific commit hashes here if needed
+# Patterns for agent commits
+# *agent*
+# *Agent*

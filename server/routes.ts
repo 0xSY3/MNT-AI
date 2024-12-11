@@ -214,7 +214,7 @@ Format the response as a JSON object with these keys:
         messages: [
           {
             role: "system",
-            content: systemPrompt
+            content: systemPrompt + "\n\nIMPORTANT: Your response must be a valid JSON object."
           },
           {
             role: "user",
@@ -222,7 +222,6 @@ Format the response as a JSON object with these keys:
           }
         ],
         temperature: 0.3,
-        response_format: { type: "json_object" },
         max_tokens: 4096
       });
 
@@ -621,7 +620,7 @@ Use Hardhat/Chai syntax for tests. Include comments explaining test logic.`;
         messages: [
           {
             role: "system",
-            content: systemPrompt
+            content: systemPrompt + "\n\nIMPORTANT: Your response must be a valid JSON object containing a 'tests' array."
           },
           {
             role: "user",
@@ -629,7 +628,6 @@ Use Hardhat/Chai syntax for tests. Include comments explaining test logic.`;
           }
         ],
         temperature: 0.3,
-        response_format: { type: "json_object" },
         max_tokens: 4096
       });
 

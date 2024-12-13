@@ -2,6 +2,13 @@ import { useState, useEffect } from 'react';
 import { ethers } from 'ethers';
 import { Button } from "@/components/ui/button";
 
+// Add type declarations for window.ethereum
+declare global {
+  interface Window {
+    ethereum?: any;
+  }
+}
+
 export function WalletConnector() {
   const [account, setAccount] = useState<string | null>(null);
   const [provider, setProvider] = useState<ethers.BrowserProvider | null>(null);

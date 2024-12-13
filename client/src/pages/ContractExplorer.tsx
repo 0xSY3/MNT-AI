@@ -223,29 +223,29 @@ export default function ContractExplorer() {
       <FloatingParticles />
       <Navbar />
       
-      <main className="relative z-10 pt-24 pb-20 space-y-6 max-w-6xl mx-auto px-6">
-        <div className="text-center space-y-2">
+      <main className="relative z-10 pt-20 sm:pt-24 pb-16 sm:pb-20 space-y-6 max-w-6xl mx-auto px-4 sm:px-6">
+        <div className="text-center space-y-4">
           <div className="inline-block px-4 py-1.5 mb-4 rounded-full text-sm font-medium 
             bg-purple-500/10 border border-purple-500/20 animate-in fade-in slide-in-from-bottom-3">
             <span className="bg-gradient-to-r from-purple-400 to-purple-600 bg-clip-text text-transparent">
               AI-Powered Analysis 🤖
             </span>
           </div>
-          <h1 className="text-5xl font-black tracking-tight bg-gradient-to-r from-purple-400 to-purple-600 bg-clip-text text-transparent">
+          <h1 className="text-4xl sm:text-5xl font-black tracking-tight bg-gradient-to-r from-purple-400 to-purple-600 bg-clip-text text-transparent leading-tight">
             Interactive Contract Explorer
           </h1>
-          <p className="text-xl text-white/60 max-w-[600px] mx-auto">
+          <p className="text-lg sm:text-xl text-white/60 max-w-[600px] mx-auto">
             Chat with and analyze smart contracts on Mantle network
           </p>
         </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
         <Card className="border-primary/20 backdrop-blur-sm bg-background/95">
-          <CardHeader className="space-y-1">
-            <CardTitle className="text-2xl font-bold bg-gradient-to-r from-primary to-primary/50 bg-clip-text text-transparent">
+          <CardHeader className="space-y-1 p-4 sm:p-6">
+            <CardTitle className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-primary to-primary/50 bg-clip-text text-transparent">
               Contract Chat
             </CardTitle>
-            <CardDescription className="text-base">
+            <CardDescription className="text-sm sm:text-base">
               Interact with your smart contract through natural language
             </CardDescription>
           </CardHeader>

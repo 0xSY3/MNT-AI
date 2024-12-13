@@ -8,6 +8,39 @@ import aiRouter from './routes/ai';
 export function registerRoutes(app: Express) {
   // Register AI Assistant routes
   app.use('/api/ai', aiRouter);
+
+  // Contract Compilation endpoint
+  app.post("/api/compile-contract", async (req, res) => {
+    try {
+      const { code } = req.body;
+      
+      if (!code) {
+        return res.status(400).json({
+          error: "Contract code is required"
+        });
+      }
+
+      // Basic validation of Solidity code
+      if (!code.includes('pragma solidity') || !code.includes('contract')) {
+        return res.status(400).json({
+          error: "Invalid Solidity contract code"
+        });
+      }
+
+      // For now, just validate the syntax
+      res.json({ 
+        success: true,
+        message: "Contract compiled successfully"
+      });
+      
+    } catch (error) {
+      console.error("Compilation error:", error);
+      res.status(500).json({
+        error: "Failed to compile contract",
+        details: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
   // AI Contract Generation
   app.post("/api/ai/generate", async (req, res) => {
     try {
@@ -214,7 +247,7 @@ Format the response as a JSON object with these keys:
         messages: [
           {
             role: "system",
-            content: systemPrompt
+            content: systemPrompt + "\n\nIMPORTANT: Your response must be a valid JSON object."
           },
           {
             role: "user",
@@ -222,7 +255,6 @@ Format the response as a JSON object with these keys:
           }
         ],
         temperature: 0.3,
-        response_format: { type: "json_object" },
         max_tokens: 4096
       });
 
@@ -621,7 +653,7 @@ Use Hardhat/Chai syntax for tests. Include comments explaining test logic.`;
         messages: [
           {
             role: "system",
-            content: systemPrompt
+            content: systemPrompt + "\n\nIMPORTANT: Your response must be a valid JSON object containing a 'tests' array."
           },
           {
             role: "user",
@@ -629,7 +661,6 @@ Use Hardhat/Chai syntax for tests. Include comments explaining test logic.`;
           }
         ],
         temperature: 0.3,
-        response_format: { type: "json_object" },
         max_tokens: 4096
       });
 

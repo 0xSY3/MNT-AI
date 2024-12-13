@@ -155,59 +155,67 @@ export default function ContractBuilder() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8">
               <div className="space-y-6">
                 <Card className="border-purple-500/20 bg-purple-900/10 backdrop-blur-sm">
-                  <CardHeader>
-                    <CardTitle className="text-white">Contract Requirements</CardTitle>
-                    <CardDescription className="text-white/60">
+                  <CardHeader className="space-y-2 p-4 sm:p-6">
+                    <CardTitle className="text-xl sm:text-2xl text-white">Contract Requirements</CardTitle>
+                    <CardDescription className="text-sm sm:text-base text-white/60">
                       Describe your smart contract requirements (use "-" for features)
                     </CardDescription>
                   </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="space-y-2">
-                      <label className="text-sm text-white/60">Contract Description</label>
+                  <CardContent className="space-y-6 p-4 sm:p-6">
+                    <div className="space-y-3">
+                      <label className="text-sm font-medium text-white/80">Contract Description</label>
                       <Textarea 
                         placeholder="Enter your contract requirements..."
                         value={description}
                         onChange={(e) => setDescription(e.target.value)}
-                        className="h-[120px] bg-purple-500/10 border-purple-500/20 text-white 
-                          placeholder:text-white/40 resize-none"
+                        className="min-h-[120px] sm:min-h-[150px] bg-purple-500/10 border-purple-500/20 
+                          text-white placeholder:text-white/40 resize-none focus:border-purple-500/40 
+                          transition-colors"
                       />
                     </div>
 
                     <div className="space-y-4">
                       <div>
-                        <label className="text-sm font-medium text-white">Features (Optional)</label>
+                        <label className="text-sm font-medium text-white/80">Features (Optional)</label>
                         <p className="text-xs text-white/60 mt-1">Add custom features for your smart contract</p>
                       </div>
-                      <div className="flex space-x-2">
+                      <div className="flex flex-col sm:flex-row gap-3 sm:gap-2">
                         <Input
                           placeholder="Enter a feature..."
                           value={newFeature}
                           onChange={(e) => setNewFeature(e.target.value)}
                           onKeyPress={(e) => e.key === 'Enter' && addFeature()}
-                          className="bg-purple-500/10 border-purple-500/20 text-white placeholder:text-white/40"
+                          className="flex-1 bg-purple-500/10 border-purple-500/20 text-white 
+                            placeholder:text-white/40 focus:border-purple-500/40 transition-colors"
                         />
                         <Button
                           onClick={addFeature}
                           disabled={!newFeature.trim()}
-                          className="bg-purple-600/90 text-white hover:bg-purple-500 border border-purple-500/30 shadow-lg shadow-purple-500/20"
+                          className="sm:w-auto w-full bg-purple-600/90 text-white hover:bg-purple-500 
+                            border border-purple-500/30 shadow-lg shadow-purple-500/20 transition-all 
+                            duration-200 hover:scale-[1.02]"
                         >
-                          Add
+                          Add Feature
                         </Button>
                       </div>
-                      <div className="flex flex-wrap gap-2">
+                      <div className="flex flex-wrap gap-2 max-h-[150px] overflow-y-auto 
+                        scrollbar-thin scrollbar-thumb-purple-500/20 scrollbar-track-transparent 
+                        pr-2">
                         {features.map((feature, index) => (
                           <Badge
                             key={index}
                             variant="outline"
-                            className="bg-purple-500/10 text-white border-purple-500/20 px-2 py-1 flex items-center space-x-2"
+                            className="bg-purple-500/10 text-white border-purple-500/20 px-3 py-1.5 
+                              flex items-center space-x-2 text-sm"
                           >
                             <span>{feature}</span>
                             <button
                               onClick={() => removeFeature(index)}
-                              className="hover:text-purple-300 transition-colors"
+                              className="hover:text-purple-300 transition-colors ml-2"
+                              aria-label="Remove feature"
                             >
                               ×
                             </button>
@@ -220,10 +228,11 @@ export default function ContractBuilder() {
                       onClick={() => generateContract.mutate()}
                       disabled={!description || generateContract.isPending}
                       className="w-full bg-purple-600/90 text-white hover:bg-purple-500 
-                        border border-purple-500/30 shadow-lg shadow-purple-500/20"
+                        border border-purple-500/30 shadow-lg shadow-purple-500/20 
+                        transition-all duration-200 hover:scale-[1.02] h-12"
                     >
-                      <Code2 className="mr-2 h-4 w-4" />
-                      {generateContract.isPending ? "Generating..." : "Generate Contract"}
+                      <Code2 className="mr-2 h-5 w-5" />
+                      {generateContract.isPending ? "Generating Contract..." : "Generate Smart Contract"}
                     </Button>
                   </CardContent>
                 </Card>
@@ -257,18 +266,22 @@ export default function ContractBuilder() {
 
               <div className="space-y-6">
                 <Card className="border-purple-500/20 bg-purple-900/10 backdrop-blur-sm">
-                  <CardHeader>
+                  <CardHeader className="space-y-1">
                     <CardTitle className="text-white">Generated Contract</CardTitle>
                     <CardDescription className="text-white/60">
                       Edit your generated smart contract code
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <div className="space-y-4">
-                      <CodeViewer
-                        code={code}
-                        className="min-h-[400px] max-h-[600px]"
-                      />
+                    <div className="space-y-6">
+                      <div className="relative rounded-lg border border-purple-500/20 bg-black/80 backdrop-blur-sm h-[500px] overflow-hidden">
+                        <CodeViewer
+                          code={code}
+                          className="h-full w-full"
+                          typing={generateContract.isPending}
+                          typingSpeed={10}
+                        />
+                      </div>
                       <div className="flex justify-end space-x-2">
                         <Button
                           onClick={() => compileContract.mutate()}

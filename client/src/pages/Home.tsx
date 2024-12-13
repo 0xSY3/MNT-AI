@@ -19,24 +19,26 @@ interface FeatureCardProps {
 const FeatureCard = ({ href, icon: Icon, title, description, buttonText }: FeatureCardProps) => (
   <Link href={href}>
     <Card className="h-full bg-purple-900/10 border border-purple-500/20 backdrop-blur-sm 
-      hover:-translate-y-1 transition-all duration-300">
-      <CardHeader>
+      hover:-translate-y-1 transition-all duration-300 group">
+      <CardHeader className="space-y-3 p-4 sm:p-6">
         <CardTitle className="flex items-center space-x-3">
-          <div className="p-2.5 rounded-xl bg-gradient-to-r from-purple-400/20 to-purple-600/20">
-            <Icon className="h-6 w-6 text-purple-400" />
+          <div className="p-2 sm:p-2.5 rounded-xl bg-gradient-to-r from-purple-400/20 to-purple-600/20
+            transition-all duration-300 group-hover:from-purple-400/30 group-hover:to-purple-600/30">
+            <Icon className="h-5 w-5 sm:h-6 sm:w-6 text-purple-400" />
           </div>
-          <span className="font-semibold text-white/90">
+          <span className="font-semibold text-base sm:text-lg text-white/90">
             {title}
           </span>
         </CardTitle>
-        <CardDescription className="text-white/60">
+        <CardDescription className="text-sm sm:text-base text-white/60">
           {description}
         </CardDescription>
       </CardHeader>
-      <CardContent>
+      <CardContent className="p-4 sm:p-6 pt-0 sm:pt-0">
         <Button className="w-full bg-purple-600/90 text-white hover:bg-purple-500 border border-purple-500/30 
-          shadow-lg shadow-purple-500/20 transition-all duration-300">
-          {buttonText} <ArrowRight className="ml-2 h-4 w-4" />
+          shadow-lg shadow-purple-500/20 transition-all duration-300 group-hover:scale-[1.02]">
+          <span className="mr-2">{buttonText}</span>
+          <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
         </Button>
       </CardContent>
     </Card>
@@ -50,17 +52,17 @@ interface StatCardProps {
 }
 
 const StatCard = ({ value, label, icon: Icon }: StatCardProps) => (
-  <div className="p-6 rounded-2xl bg-purple-900/10 border border-purple-500/20 backdrop-blur-sm 
+  <div className="px-4 py-5 sm:p-6 rounded-2xl bg-purple-900/10 border border-purple-500/20 backdrop-blur-sm 
     hover:scale-105 transition-all duration-300">
     <div className="flex flex-col items-center text-center">
-      <div className="flex items-center gap-3 mb-3">
-        <Icon className="w-6 h-6 text-purple-400" />
-        <span className="text-3xl font-black bg-gradient-to-r from-purple-400 to-purple-600 
+      <div className="flex items-center gap-2 sm:gap-3 mb-2 sm:mb-3">
+        <Icon className="w-5 h-5 sm:w-6 sm:h-6 text-purple-400" />
+        <span className="text-2xl sm:text-3xl font-black bg-gradient-to-r from-purple-400 to-purple-600 
           bg-clip-text text-transparent">
           {value}
         </span>
       </div>
-      <p className="text-sm text-gray-300 font-medium">{label}</p>
+      <p className="text-xs sm:text-sm text-gray-300 font-medium">{label}</p>
     </div>
   </div>
 );
@@ -140,20 +142,20 @@ export default function Home() {
                 </span>
               </div>
 
-              <div className="mb-12 space-y-6">
-                <h1 className="text-5xl sm:text-6xl md:text-7xl font-black tracking-tight leading-tight">
+              <div className="mb-8 sm:mb-12 space-y-4 sm:space-y-6">
+                <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-black tracking-tight leading-tight px-4">
                   Smart Contracts with
                   <br />
                   <span className="text-purple-500">
                     AI Power
                   </span>
                 </h1>
-                <p className="text-xl md:text-2xl max-w-2xl mx-auto text-gray-400">
+                <p className="text-lg sm:text-xl md:text-2xl max-w-2xl mx-auto text-gray-400 px-4">
                   Build, deploy, and optimize smart contracts with AI assistance on the Mantle network
                 </p>
               </div>
 
-              <div className="grid grid-cols-3 gap-6 max-w-3xl mx-auto mb-16">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6 max-w-3xl mx-auto mb-8 sm:mb-16 px-4">
                 <StatCard value="100%" label="Code Coverage" icon={Shield} />
                 <StatCard value="50%" label="Gas Optimized" icon={Zap} />
                 <StatCard value="24/7" label="AI Analysis" icon={Brain} />
@@ -163,9 +165,9 @@ export default function Home() {
         </section>
 
         {/* Features Grid */}
-        <section className="py-20 border-y border-purple-500/10">
-          <div className="max-w-6xl mx-auto px-6">
-            <div className="grid grid-cols-3 gap-6">
+        <section className="py-12 sm:py-20 border-y border-purple-500/10">
+          <div className="max-w-6xl mx-auto px-4 sm:px-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
               {features.map((feature, index) => (
                 <FeatureCard key={index} {...feature} />
               ))}

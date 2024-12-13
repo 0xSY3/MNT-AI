@@ -2,7 +2,7 @@
 
 An AI-powered development platform for building, analyzing, and optimizing smart contracts on the Mantle Network Layer 2 solution.
 
-![Mantle Network Development Platform](generated-icon.png)
+![Mantle Network Development Platform](genesrated-icon.png)
 
 ## Features
 

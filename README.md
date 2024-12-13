@@ -70,7 +70,7 @@ OPENAI_API_KEY=your_api_key_here
 npm run dev
 ```
 
-The application will be available at `https://your-repl-name.your-username.repl.co`
+The application will be available at `https://mntdevai.replit.app/`
 
 ## Directory Structure
 

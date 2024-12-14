@@ -3,36 +3,62 @@ import { db } from "../db";
 import { contracts } from "@db/schema";
 import OpenAI from "openai";
 import { ethers } from 'ethers';
+import solc from 'solc';
+import { CONTRACT_COMPILER_VERSION, COMPILER_SETTINGS } from './config/mantle';
 import aiRouter from './routes/ai';
 
 export function registerRoutes(app: Express) {
-  // Register AI Assistant routes
-  app.use('/api/ai', aiRouter);
-
   // Contract Compilation endpoint
-  app.post("/api/compile-contract", async (req, res) => {
+  app.post("/api/compile", async (req, res) => {
     try {
       const { code } = req.body;
-      
+
       if (!code) {
         return res.status(400).json({
           error: "Contract code is required"
         });
       }
 
-      // Basic validation of Solidity code
-      if (!code.includes('pragma solidity') || !code.includes('contract')) {
+      // Create input object for solc
+      const input = {
+        language: 'Solidity',
+        sources: {
+          'contract.sol': {
+            content: code
+          }
+        },
+        settings: {
+          ...COMPILER_SETTINGS,
+          outputSelection: {
+            '*': {
+              '*': ['*']
+            }
+          }
+        }
+      };
+
+      // Load specific version of solc
+      const solcInput = JSON.stringify(input);
+      const output = JSON.parse(solc.compile(solcInput));
+
+      // Check for compilation errors
+      if (output.errors?.some((error: any) => error.severity === 'error')) {
         return res.status(400).json({
-          error: "Invalid Solidity contract code"
+          error: "Compilation failed",
+          details: output.errors
         });
       }
 
-      // For now, just validate the syntax
-      res.json({ 
-        success: true,
-        message: "Contract compiled successfully"
+      // Extract compiled contract (assuming single contract)
+      const contractFile = Object.keys(output.contracts['contract.sol'])[0];
+      const contract = output.contracts['contract.sol'][contractFile];
+
+      // Return ABI and bytecode
+      res.json({
+        abi: contract.abi,
+        bytecode: contract.evm.bytecode.object
       });
-      
+
     } catch (error) {
       console.error("Compilation error:", error);
       res.status(500).json({
@@ -41,6 +67,8 @@ export function registerRoutes(app: Express) {
       });
     }
   });
+  // Register AI Assistant routes
+  app.use('/api/ai', aiRouter);
   // AI Contract Generation
   app.post("/api/ai/generate", async (req, res) => {
     try {

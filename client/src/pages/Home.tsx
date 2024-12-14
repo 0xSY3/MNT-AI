@@ -83,7 +83,7 @@ export default function Home() {
       href: "/contract-builder",
       icon: Code2,
       title: "Contract Builder",
-      description: "AI-powered smart contract development with visual tools",
+      description: "AI-powered smart contract development and analysis",
       buttonText: "Get Started"
     },
     {
@@ -138,34 +138,34 @@ export default function Home() {
               <div className="inline-block px-4 py-1.5 mb-4 rounded-full text-sm font-medium 
                 bg-purple-500/10 border border-purple-500/20 animate-in fade-in slide-in-from-bottom-3">
                 <span className="bg-gradient-to-r from-purple-400 to-purple-600 bg-clip-text text-transparent">
-                  Powered by AI 🚀
+                  Next-Gen Smart Contract Development 🚀
                 </span>
               </div>
 
-              <div className="mb-8 sm:mb-12 space-y-4 sm:space-y-6">
+              <div className="mb-8 sm:mb-10 space-y-4 sm:space-y-6">
                 <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-black tracking-tight leading-tight px-4">
-                  Smart Contracts with
+                  Elevate Your
                   <br />
-                  <span className="text-purple-500">
-                    AI Power
+                  <span className="bg-gradient-to-r from-purple-400 via-fuchsia-500 to-indigo-600 bg-clip-text text-transparent animate-text">
+                    Web3 Experience
                   </span>
                 </h1>
                 <p className="text-lg sm:text-xl md:text-2xl max-w-2xl mx-auto text-gray-400 px-4">
-                  Build, deploy, and optimize smart contracts with AI assistance on the Mantle network
+                  Build, audit, and deploy secure smart contracts with advanced AI assistance on the Mantle network
                 </p>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6 max-w-3xl mx-auto mb-8 sm:mb-16 px-4">
-                <StatCard value="100%" label="Code Coverage" icon={Shield} />
-                <StatCard value="50%" label="Gas Optimized" icon={Zap} />
-                <StatCard value="24/7" label="AI Analysis" icon={Brain} />
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 max-w-3xl mx-auto mb-6 px-4">
+                <StatCard value="10+" label="Contract Templates" icon={Shield} />
+                <StatCard value="24/7" label="AI Development" icon={Brain} />
+                <StatCard value="100%" label="Test Coverage" icon={Zap} />
               </div>
             </div>
           </div>
         </section>
 
         {/* Features Grid */}
-        <section className="py-12 sm:py-20 border-y border-purple-500/10">
+        <section id="features" className="py-12 sm:py-20 border-y border-purple-500/10">
           <div className="max-w-6xl mx-auto px-4 sm:px-6">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
               {features.map((feature, index) => (

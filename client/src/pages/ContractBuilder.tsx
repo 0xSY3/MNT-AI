@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { ethers } from "ethers";
 import { useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -11,9 +12,10 @@ import DataVisualization from "@/components/DataVisualization";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SecurityAnalyzer } from "@/components/SecurityAnalyzer";
 import { TestGenerator } from "@/components/TestGenerator";
+import { connectWallet, compileContract, estimateGas, deployContract } from "@/lib/mantle";
 import { GridBackground, ScrollLines, FloatingParticles } from "@/components/ui/background-effects";
 import { Navbar } from "@/components/ui/navbar";
-import { Code2, ShieldCheck, TestTubes } from "lucide-react";
+import { Code2, ShieldCheck, TestTubes, Wallet, Rocket, Timer, Loader2, CheckCircle } from "lucide-react";
 import { CodeViewer } from "@/components/ui/code-viewer";
 
 export default function ContractBuilder() {
@@ -22,6 +24,41 @@ export default function ContractBuilder() {
   const [code, setCode] = useState("");
   const { toast } = useToast();
   const [isScrolled, setIsScrolled] = useState(false);
+  const [walletAddress, setWalletAddress] = useState<string | null>(null);
+
+  // Listen for wallet connection changes
+  useEffect(() => {
+    const checkWallet = async () => {
+      if (window.ethereum) {
+        const provider = new ethers.BrowserProvider(window.ethereum);
+        try {
+          const accounts = await provider.listAccounts();
+          setWalletAddress(accounts[0]?.address || null);
+        } catch (error) {
+          console.error("Error checking wallet:", error);
+          setWalletAddress(null);
+        }
+      }
+    };
+
+    checkWallet();
+    
+    if (window.ethereum) {
+      window.ethereum.on('accountsChanged', (accounts: string[]) => {
+        setWalletAddress(accounts[0] || null);
+      });
+    }
+
+    return () => {
+      if (window.ethereum) {
+        window.ethereum.removeListener('accountsChanged', () => {});
+      }
+    };
+  }, []);
+  const [compiledContract, setCompiledContract] = useState<{ abi: any[]; bytecode: string } | null>(null);
+  const [isDeploying, setIsDeploying] = useState(false);
+  const [deployedAddress, setDeployedAddress] = useState("");
+  const [gasEstimate, setGasEstimate] = useState<{ estimated: string; breakdown: { deployment: string; execution: string } } | null>(null);
 
   const [newFeature, setNewFeature] = useState("");
 
@@ -94,19 +131,27 @@ export default function ContractBuilder() {
     }
   });
 
-  const compileContract = useMutation({
+  const compileMutation = useMutation({
     mutationFn: async () => {
-      const response = await fetch("/api/compile-contract", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code })
-      });
-      
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(errorText || "Compilation failed");
+      try {
+        // Compile the contract
+        const result = await compileContract(code);
+        setCompiledContract(result);
+        
+        // Estimate gas if wallet is connected
+        if (walletAddress) {
+          const estimate = await estimateGas({
+            code,
+            abi: result.abi,
+            bytecode: result.bytecode
+          });
+          setGasEstimate(estimate);
+        }
+        
+        return result;
+      } catch (error) {
+        throw error;
       }
-      return response.json();
     },
     onSuccess: () => {
       toast({
@@ -115,6 +160,8 @@ export default function ContractBuilder() {
       });
     },
     onError: (error) => {
+      setCompiledContract(null);
+      setGasEstimate(null);
       toast({
         title: "Compilation Failed",
         description: error instanceof Error ? error.message : "Unknown compilation error",
@@ -274,23 +321,98 @@ export default function ContractBuilder() {
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-6">
-                      <div className="relative rounded-lg border border-purple-500/20 bg-black/80 backdrop-blur-sm h-[500px] overflow-hidden">
+                      <div className="relative rounded-lg border border-purple-500/20 bg-black/40 backdrop-blur-sm">
                         <CodeViewer
                           code={code}
-                          className="h-full w-full"
-                          typing={generateContract.isPending}
-                          typingSpeed={10}
+                          className="max-h-[calc(100vh-400px)] min-h-[400px] overflow-auto"
                         />
                       </div>
                       <div className="flex justify-end space-x-2">
                         <Button
-                          onClick={() => compileContract.mutate()}
-                          disabled={!code || compileContract.isPending}
+                          onClick={() => compileMutation.mutate()}
+                          disabled={!code || compileMutation.isPending}
                           className="bg-purple-600/90 text-white hover:bg-purple-500 border border-purple-500/30"
                         >
-                          {compileContract.isPending ? "Compiling..." : "Compile Contract"}
+                          {compileMutation.isPending ? "Compiling..." : "Compile Contract"}
                         </Button>
+                        {compiledContract && (
+                          <Button
+                            onClick={async () => {
+                              if (!walletAddress) {
+                                try {
+                                  const address = await connectWallet();
+                                  setWalletAddress(address);
+                                } catch (error) {
+                                  toast({
+                                    title: "Wallet Connection Failed",
+                                    description: error instanceof Error ? error.message : "Failed to connect wallet",
+                                    variant: "destructive",
+                                  });
+                                  return;
+                                }
+                              } else {
+                                try {
+                                  setIsDeploying(true);
+                                  const result = await deployContract({
+                                    abi: compiledContract.abi,
+                                    bytecode: compiledContract.bytecode,
+                                  });
+                                  setDeployedAddress(result.address);
+                                  toast({
+                                    title: "Contract Deployed Successfully",
+                                    description: `Deployed to Mantle Testnet at ${result.address.slice(0, 6)}...${result.address.slice(-4)}`,
+                                  });
+                                } catch (error) {
+                                  toast({
+                                    title: "Deployment Failed",
+                                    description: error instanceof Error ? error.message : "Failed to deploy contract",
+                                    variant: "destructive",
+                                  });
+                                } finally {
+                                  setIsDeploying(false);
+                                }
+                              }
+                            }}
+                            disabled={isDeploying}
+                            className="bg-purple-600/90 text-white hover:bg-purple-500 border border-purple-500/30"
+                          >
+                            {isDeploying ? (
+                              <>
+                                <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                                Deploying...
+                              </>
+                            ) : deployedAddress ? (
+                              <>
+                                <CheckCircle className="mr-2 h-5 w-5" />
+                                Deployed
+                              </>
+                            ) : (
+                              <>
+                                <Rocket className="mr-2 h-5 w-5" />
+                                Deploy to Mantle
+                              </>
+                            )}
+                          </Button>
+                        )}
                       </div>
+                      {gasEstimate && (
+                        <div className="mt-4 p-4 rounded-lg border border-purple-500/20 bg-purple-900/10">
+                          <div className="flex items-center mb-2">
+                            <Timer className="mr-2 h-4 w-4 text-purple-400" />
+                            <h4 className="text-sm font-medium text-purple-400">Estimated Gas</h4>
+                          </div>
+                          <div className="grid grid-cols-2 gap-4 text-sm">
+                            <div>
+                              <p className="text-white/60">Deployment</p>
+                              <p className="font-mono">{gasEstimate.breakdown.deployment} gas</p>
+                            </div>
+                            <div>
+                              <p className="text-white/60">Execution</p>
+                              <p className="font-mono">{gasEstimate.breakdown.execution} gas</p>
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </CardContent>
                 </Card>

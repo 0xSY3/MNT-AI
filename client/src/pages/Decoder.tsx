@@ -68,7 +68,7 @@ export default function Decoder() {
     if (!address) {
       toast({
         title: "Input Required",
-        description: "Please enter a contract address or transaction hash",
+        description: "Please enter a smart contract address",
         variant: "destructive",
       });
       return;
@@ -109,7 +109,7 @@ export default function Decoder() {
           <CardHeader>
             <CardTitle className="text-white">Contract Analysis</CardTitle>
             <CardDescription className="text-white/60">
-              Enter a contract address or transaction hash to analyze
+              Enter a smart contract address to analyze
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -117,7 +117,7 @@ export default function Decoder() {
               <div className="relative flex-1">
                 <Search className="absolute left-2 top-2.5 h-4 w-4 text-white/60" />
                 <Input
-                  placeholder="Enter contract address or transaction hash..."
+                  placeholder="Enter contract address..."
                   value={address}
                   onChange={(e) => setAddress(e.target.value)}
                   className="pl-8 bg-purple-500/10 border-purple-500/20 text-white placeholder:text-white/40"

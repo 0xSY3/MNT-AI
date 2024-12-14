@@ -63,12 +63,28 @@ export default function ContractEditor({
         </div>
 
         <TabsContent value="editor" className="m-0">
-          <div className="h-[600px] border-0">
+          <div className="h-[800px] border-0">
             <Editor
               defaultLanguage="solidity"
               value={code}
               onChange={handleEditorChange}
-              options={editorOptions}
+              options={{
+                ...editorOptions,
+                readOnly: false,
+                fontSize: 16,
+                lineHeight: 24,
+                padding: { top: 16, bottom: 16 },
+                folding: true,
+                lineNumbers: "on",
+                glyphMargin: true,
+                scrollBeyondLastLine: false,
+                automaticLayout: true,
+                wordWrap: "on",
+                minimap: { enabled: true },
+                contextmenu: true,
+                quickSuggestions: true,
+                dragAndDrop: true
+              }}
               theme="vs-dark"
             />
           </div>

@@ -1,4 +1,4 @@
-# Mantle Network Development Platform
+# MNT DEV AI -  A Mantle Network Development Platform
 
 An AI-powered development platform for building, analyzing, and optimizing smart contracts on the Mantle Network Layer 2 solution.
 

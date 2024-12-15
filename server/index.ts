@@ -79,9 +79,9 @@ app.use((req, res, next) => {
     serveStatic(app);
     // Production (Vercel) port
     const PORT = process.env.PORT || 3000;
-    server.listen(PORT, () => {
-      log(`Production server running on port ${PORT}`);
-    });
+server.listen(PORT, () => {
+  log(`Server running on port ${PORT}`);
+});
   }
 })().catch(error => {
   console.error('Server initialization error:', error);

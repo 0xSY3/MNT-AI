@@ -1,7 +1,6 @@
-
 export const MANTLE_TESTNET_CONFIG = {
-  chainId: "0xaa36dc", // 11155420 in decimal
-  chainName: "Mantle Sepolia",
+  chainId: "0x138B", // 5003 in decimal
+  chainName: "Mantle Sepolia Testnet",
   nativeCurrency: {
     name: "MNT",
     symbol: "MNT",

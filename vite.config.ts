@@ -8,6 +8,7 @@ import { fileURLToPath } from "url";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
+
 export default defineConfig({
   plugins: [
     react(),
@@ -19,11 +20,49 @@ export default defineConfig({
     alias: {
       "@": path.resolve(__dirname, "client", "src"),
       "@db": path.resolve(__dirname, "db"),
+      "@components": path.resolve(__dirname, "client", "src", "components")
     },
   },
   root: path.resolve(__dirname, "client"),
   build: {
     outDir: path.resolve(__dirname, "dist/public"),
     emptyOutDir: true,
+    // Add optimization configurations
+    target: 'esnext',
+    minify: 'esbuild',
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'vendor': [
+            'react',
+            'react-dom',
+            'ethers',
+            '@tanstack/react-query',
+            'd3',
+            'recharts'
+          ],
+          'monaco': ['@monaco-editor/react', 'monaco-editor'],
+          'ui': [
+            '@radix-ui/react-accordion',
+            '@radix-ui/react-alert-dialog',
+            '@radix-ui/react-dialog',
+            '@radix-ui/react-tabs',
+            // ... other UI components
+          ]
+        }
+      }
+    }
   },
+  optimizeDeps: {
+    include: ['react', 'react-dom', 'ethers'],
+    exclude: ['@monaco-editor/react']
+  },
+  server: {
+    hmr: {
+      overlay: false
+    },
+    watch: {
+      usePolling: false
+    }
+  }
 });

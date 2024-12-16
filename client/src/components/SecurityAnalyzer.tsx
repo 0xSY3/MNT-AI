@@ -1,209 +1,185 @@
-import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { CodeViewer } from "@/components/ui/code-viewer";
-import { Shield, AlertTriangle, Zap, Rocket } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { useToast } from "@/hooks/use-toast";
+import { ShieldCheck, Loader2, AlertTriangle, CheckCircle, XCircle } from "lucide-react";
 
 interface SecurityAnalyzerProps {
   code: string;
-  onAnalysisComplete?: (analysis: any) => void;
 }
 
-export function SecurityAnalyzer({ code, onAnalysisComplete }: SecurityAnalyzerProps) {
-  const [analysis, setAnalysis] = useState<any>(null);
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const { toast } = useToast();
+interface SecurityIssue {
+  severity: 'high' | 'medium' | 'low';
+  description: string;
+  line?: number;
+  snippet?: string;
+  recommendation?: string;
+  impact?: string;
+}
 
-  const analyze = async () => {
-    if (!code?.trim()) {
-      toast({
-        title: "Input Required",
-        description: "Please provide contract code to analyze",
-        variant: "destructive"
-      });
+const SecurityAnalyzer: React.FC<SecurityAnalyzerProps> = ({ code }) => {
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [analysisResults, setAnalysisResults] = useState<SecurityIssue[]>([]);
+  const [overallRisk, setOverallRisk] = useState<string>('');
+
+  const analyzeContract = async () => {
+    if (!code.trim()) {
       return;
     }
-    
+
+    setIsAnalyzing(true);
     try {
-      setIsAnalyzing(true);
-      const response = await fetch("/api/ai/analyze", {
-        method: "POST",
+      const response = await fetch('/api/ai/analyze', {
+        method: 'POST',
         headers: {
-          "Content-Type": "application/json",
+          'Content-Type': 'application/json',
         },
         body: JSON.stringify({ code }),
       });
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || "Analysis failed");
+        throw new Error('Analysis failed');
       }
 
-      const result = await response.json();
-      if (!result.securityIssues || !result.optimizations) {
-        throw new Error("Invalid analysis result format");
-      }
-
-      setAnalysis(result);
-      onAnalysisComplete?.(result);
-
-      toast({
-        title: "Analysis Complete",
-        description: `Found ${result.securityIssues.length} security issues and ${result.mantleOptimizations?.length || 0} Mantle-specific optimizations`,
-      });
+      const data = await response.json();
+      setAnalysisResults(data.issues || []);
+      setOverallRisk(data.overallRisk || calculateOverallRisk(data.issues));
     } catch (error) {
-      console.error("Analysis error:", error);
-      toast({
-        title: "Analysis Failed",
-        description: error instanceof Error ? error.message : "Failed to analyze contract",
-        variant: "destructive"
-      });
+      console.error('Security analysis error:', error);
+      setAnalysisResults([{
+        severity: 'medium',
+        description: 'Failed to perform security analysis. Please try again.',
+      }]);
+      setOverallRisk('medium');
     } finally {
       setIsAnalyzing(false);
     }
   };
 
-  const getSeverityColor = (severity: string) => {
+  const calculateOverallRisk = (issues: SecurityIssue[]) => {
+    if (issues.some(i => i.severity === 'high')) return 'high';
+    if (issues.some(i => i.severity === 'medium')) return 'medium';
+    if (issues.some(i => i.severity === 'low')) return 'low';
+    return 'safe';
+  };
+
+  const getSeverityIcon = (severity: string) => {
     switch (severity) {
-      case "high":
-        return "text-red-500 bg-red-500/10";
-      case "medium":
-        return "text-yellow-500 bg-yellow-500/10";
-      case "low":
-        return "text-green-500 bg-green-500/10";
+      case 'high':
+        return <XCircle className="h-5 w-5 text-red-500" />;
+      case 'medium':
+        return <AlertTriangle className="h-5 w-5 text-yellow-500" />;
+      case 'low':
+        return <CheckCircle className="h-5 w-5 text-green-500" />;
       default:
-        return "text-blue-500 bg-blue-500/10";
+        return <ShieldCheck className="h-5 w-5 text-white" />;
     }
   };
 
-  return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <Button
-          onClick={analyze}
-          disabled={isAnalyzing}
-          className="w-full"
-        >
-          {isAnalyzing ? (
-            <>Analyzing Contract...</>
-          ) : (
-            <>
-              <Shield className="mr-2 h-4 w-4" />
-              Analyze Security & Optimizations
-            </>
-          )}
-        </Button>
+  const getSeverityColor = (severity: string) => {
+    switch (severity) {
+      case 'high':
+        return 'text-red-500 border-red-500/30 bg-red-500/10';
+      case 'medium':
+        return 'text-yellow-500 border-yellow-500/30 bg-yellow-500/10';
+      case 'low':
+        return 'text-green-500 border-green-500/30 bg-green-500/10';
+      default:
+        return 'text-white border-purple-500/30 bg-purple-500/10';
+    }
+  };
+
+  const getOverallRiskBadge = () => {
+    const color = getSeverityColor(overallRisk);
+    return (
+      <div className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${color}`}>
+        {getSeverityIcon(overallRisk)}
+        <span className="ml-2 capitalize">{overallRisk} Risk</span>
       </div>
+    );
+  };
 
-      {analysis && (
-        <div className="space-y-6">
-          {/* Security Issues */}
-          {analysis.securityIssues?.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <AlertTriangle className="mr-2 h-5 w-5 text-yellow-500" />
-                  Security Issues
-                </CardTitle>
-                <CardDescription>
-                  Found {analysis.securityIssues.length} potential security issues
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {analysis.securityIssues.map((issue: any, index: number) => (
-                  <div key={index} className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <h3 className="font-medium">{issue.description}</h3>
-                      <Badge variant="outline" className={cn("ml-2", getSeverityColor(issue.severity))}>
-                        {issue.severity}
-                      </Badge>
-                    </div>
-                    <p className="text-sm text-muted-foreground">{issue.impact}</p>
-                    <div className="text-sm bg-primary/5 p-3 rounded-md">
-                      <strong>Recommendation:</strong> {issue.recommendation}
-                    </div>
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
-          )}
+  return (
+    <div className="space-y-4">
+      <Button
+        onClick={analyzeContract}
+        disabled={isAnalyzing || !code}
+        className="w-full bg-purple-600/90 text-white hover:bg-purple-500 
+          border border-purple-500/30 shadow-lg shadow-purple-500/20 
+          transition-all duration-200 hover:scale-[1.02] h-10"
+      >
+        {isAnalyzing ? (
+          <>
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            Analyzing...
+          </>
+        ) : (
+          <>
+            <ShieldCheck className="mr-2 h-4 w-4" />
+            Analyze Contract
+          </>
+        )}
+      </Button>
 
-          {/* Mantle L2 Optimizations */}
-          {analysis.mantleOptimizations?.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <Rocket className="mr-2 h-5 w-5 text-primary" />
-                  Mantle L2 Optimizations
-                </CardTitle>
-                <CardDescription>
-                  Suggested optimizations for Mantle network
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {analysis.mantleOptimizations.map((opt: any, index: number) => (
-                  <div key={index} className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <h3 className="font-medium">{opt.description}</h3>
-                      <Badge variant="outline" className="bg-primary/10 text-primary">
-                        {opt.category}
-                      </Badge>
+      {analysisResults.length > 0 && (
+        <div className="space-y-4">
+          <div className="flex justify-between items-center">
+            <h3 className="text-lg font-semibold text-white">Security Analysis Results</h3>
+            {getOverallRiskBadge()}
+          </div>
+          
+          <div className="space-y-4">
+            {analysisResults.map((issue, index) => (
+              <div
+                key={index}
+                className={`p-4 rounded-lg border ${getSeverityColor(issue.severity)}`}
+              >
+                <div className="flex items-start gap-3">
+                  {getSeverityIcon(issue.severity)}
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="font-medium capitalize">
+                        {issue.severity} Risk
+                      </span>
+                      {issue.line && (
+                        <span className="text-sm opacity-60">Line {issue.line}</span>
+                      )}
                     </div>
-                    <p className="text-sm text-muted-foreground">
-                      Potential savings: {opt.potentialSavings}
-                    </p>
-                    <div className="text-sm bg-primary/5 p-3 rounded-md">
-                      <strong>Implementation:</strong> {opt.implementation}
-                    </div>
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Gas Optimizations */}
-          {analysis.optimizations?.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <Zap className="mr-2 h-5 w-5 text-yellow-500" />
-                  Gas & Performance Optimizations
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {analysis.optimizations.map((opt: any, index: number) => (
-                  <div key={index} className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <h3 className="font-medium">{opt.description}</h3>
-                      <Badge variant="outline" className="bg-yellow-500/10 text-yellow-500">
-                        {opt.type}
-                      </Badge>
-                    </div>
-                    {opt.beforeCode && opt.afterCode && (
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <div className="text-sm text-muted-foreground mb-1">Before:</div>
-                          <CodeViewer code={opt.beforeCode} className="max-h-[200px]" />
-                        </div>
-                        <div>
-                          <div className="text-sm text-muted-foreground mb-1">After:</div>
-                          <CodeViewer code={opt.afterCode} className="max-h-[200px]" />
-                        </div>
+                    
+                    <p className="text-sm opacity-90 mb-3">{issue.description}</p>
+                    
+                    {issue.snippet && (
+                      <div className="my-3 p-3 rounded bg-black/50 font-mono text-sm overflow-x-auto">
+                        <pre>{issue.snippet}</pre>
                       </div>
                     )}
-                    <p className="text-sm text-muted-foreground">
-                      Estimated improvement: {opt.estimate}
-                    </p>
+                    
+                    {issue.impact && (
+                      <div className="mt-2">
+                        <span className="text-sm font-medium">Impact:</span>
+                        <p className="text-sm opacity-90 mt-1">{issue.impact}</p>
+                      </div>
+                    )}
+                    
+                    {issue.recommendation && (
+                      <div className="mt-2">
+                        <span className="text-sm font-medium">Recommendation:</span>
+                        <p className="text-sm opacity-90 mt-1">{issue.recommendation}</p>
+                      </div>
+                    )}
                   </div>
-                ))}
-              </CardContent>
-            </Card>
-          )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {analysisResults.length === 0 && !isAnalyzing && (
+        <div className="text-sm text-white/60 text-center py-4">
+          {code ? "Click analyze to check contract security" : "Enter contract code to analyze"}
         </div>
       )}
     </div>
   );
-}
+};
+
+export default SecurityAnalyzer;

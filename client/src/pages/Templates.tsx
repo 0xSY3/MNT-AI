@@ -7,7 +7,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { CodeViewer } from "@/components/ui/code-viewer";
-import { Search, FileCode, ArrowRight, Check } from "lucide-react";
+import { Search, FileCode, ArrowRight } from "lucide-react";
 import { GridBackground, ScrollLines, FloatingParticles } from "@/components/ui/background-effects";
 import { Navbar } from "@/components/ui/navbar";
 import { useToast } from "@/hooks/use-toast";

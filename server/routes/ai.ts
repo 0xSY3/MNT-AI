@@ -141,7 +141,7 @@ router.post('/chat', async (req, res) => {
     });
 
     const completion = await openai.chat.completions.create({
-      model: "gpt-4",
+      model: "gpt-3.5-turbo",
       messages: [
         { role: "system", content: SYSTEM_MESSAGE },
         { role: "user", content: message }
@@ -202,7 +202,7 @@ Please provide only the Solidity code without any additional explanation.
 Include detailed comments explaining Mantle-specific optimizations and security considerations.`;
 
     const completion = await openai.chat.completions.create({
-      model: "gpt-4",
+      model: "gpt-3.5-turbo",
       messages: [
         { role: "system", content: CONTRACT_SYSTEM_MESSAGE },
         { role: "user", content: prompt }
@@ -255,7 +255,7 @@ Please explain:
 Return the analysis in the specified JSON format with overview, purpose, features, functions, stateVariables, and specialNotes.`;
 
     const completion = await openai.chat.completions.create({
-      model: "gpt-4",
+      model: "gpt-3.5-turbo",
       messages: [
         { role: "system", content: CONTRACT_SUMMARY_MESSAGE },
         { role: "user", content: prompt }
@@ -283,9 +283,9 @@ Return the analysis in the specified JSON format with overview, purpose, feature
 
 router.post('/analyze', async (req, res) => {
   try {
-    const { code } = req.body;
+    const { message, contractCode, contractABI, address } = req.body;
     
-    if (!code) {
+    if (!contractCode) {
       return res.status(400).json({ error: 'Contract code is required' });
     }
 
@@ -297,79 +297,40 @@ router.post('/analyze', async (req, res) => {
       apiKey: process.env.OPENAI_API_KEY
     });
 
-    const prompt = `Analyze this Solidity smart contract for security issues and optimization opportunities, specifically for deployment on Mantle Network:
+    const prompt = `Analyze this smart contract and respond to the user's question:
 
-${code}
+Contract Code:
+${contractCode}
 
-Provide a comprehensive security analysis including:
-1. Overall risk assessment
-2. Detailed issues with code snippets
-3. Impact analysis for each issue
-4. Specific recommendations for improvements
-5. Line numbers where applicable
+${contractABI ? `Contract ABI:
+${JSON.stringify(contractABI, null, 2)}` : ''}
 
-Focus on:
-1. Mantle-specific security considerations
-2. Gas optimization opportunities for L2
-3. Cross-chain interaction security
-4. Storage optimization patterns
-5. Access control and authentication
-6. Input validation and error handling
-7. Event emission and logging
-8. External contract interactions
+${address ? `Contract Address: ${address}` : ''}
 
-Return the analysis in the specified JSON format with overallRisk and issues array.`;
+User Question: ${message}
+
+Provide a clear and concise response focusing on:
+1. Direct answers to the user's question
+2. Relevant code explanations
+3. Security considerations if applicable
+4. Gas optimization suggestions if relevant
+5. Mantle-specific implications`;
 
     const completion = await openai.chat.completions.create({
-      model: "gpt-4",
+      model: "gpt-3.5-turbo",
       messages: [
-        { role: "system", content: SECURITY_ANALYSIS_MESSAGE },
+        { role: "system", content: SYSTEM_MESSAGE },
         { role: "user", content: prompt }
       ],
-      temperature: 0.1,
-      max_tokens: 3000
+      temperature: 0.7,
+      max_tokens: 2000
     });
 
-    const analysisText = completion.choices[0].message.content || '';
-    
-    // Extract JSON from the response, handling potential markdown formatting
-    const jsonMatch = analysisText.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-      throw new Error('Invalid analysis format received');
-    }
-
-    const analysis = JSON.parse(jsonMatch[0]);
-    
-    // Validate the analysis structure
-    if (!analysis.issues || !Array.isArray(analysis.issues)) {
-      throw new Error('Invalid analysis structure');
-    }
-
-    // Ensure each issue has required fields and proper formatting
-    const validatedIssues = analysis.issues.map((issue: any) => ({
-      severity: issue.severity || 'medium',
-      description: issue.description || 'Unknown issue',
-      ...(issue.line && { line: issue.line }),
-      ...(issue.snippet && { snippet: issue.snippet.trim() }),
-      ...(issue.impact && { impact: issue.impact.trim() }),
-      ...(issue.recommendation && { recommendation: issue.recommendation.trim() })
-    }));
-
-    res.json({
-      overallRisk: analysis.overallRisk || calculateOverallRisk(validatedIssues),
-      issues: validatedIssues
-    });
+    const response = completion.choices[0].message.content || '';
+    res.json({ response });
   } catch (error) {
-    console.error('Security Analysis Error:', error);
-    res.status(500).json({
-      overallRisk: 'medium',
-      issues: [{
-        severity: 'medium',
-        description: 'Failed to perform security analysis. Please try again.',
-        impact: 'Unable to assess contract security',
-        recommendation: 'Please try the analysis again. If the problem persists, check the contract code for syntax errors.'
-      }]
-    });
+    console.error('Contract Analysis Error:', error);
+    res.status(500).json({ error: 'Failed to analyze contract' });
   }
 });
 

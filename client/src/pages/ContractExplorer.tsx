@@ -9,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { CodeViewer } from "@/components/ui/code-viewer";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Send, Code2, History, Play, AlertTriangle, XCircle, CheckCircle } from "lucide-react";
+import { Loader2, Send, Code2, History, Play, AlertTriangle, XCircle, CheckCircle, Bot, User } from "lucide-react";
 import { useTypingEffect } from "@/hooks/use-typing-effect";
 import { getContractCode, getContractABI } from "@/lib/blockchain";
 
@@ -43,174 +43,110 @@ export default function ContractExplorer() {
   const { toast } = useToast();
   const [contractCode, setContractCode] = useState("");
   const [contractABI, setContractABI] = useState<any>(null);
+  const [isVerified, setIsVerified] = useState(false);
+  const [decompiled, setDecompiled] = useState<string | undefined>();
 
   const handleConnect = async () => {
-    if (!address) {
-      toast({
-        title: "Input Required",
-        description: "Please enter a contract address",
-        variant: "destructive",
-      });
-      return;
-    }
-
+    if (!address) return;
+    
+    setIsLoading(true);
     try {
-      setIsLoading(true);
       const contractData = await getContractCode(address);
       const abi = await getContractABI(address);
       
-      try {
-        const data = JSON.parse(JSON.stringify(contractData)) as ContractData;
-        setContractCode(data.code);
-        setContractABI(abi);
-        
-        // Show appropriate toast message based on verification status
-        if (!data.verified) {
-          toast({
-            title: "Contract Connected",
-            description: data.message,
-            variant: "destructive"
-          });
-        } else {
-          toast({
-            title: "Contract Connected",
-            description: "Successfully connected to verified contract",
-          });
-        }
-      } catch (error) {
-        console.error("Error parsing contract data:", error);
-        toast({
-          title: "Contract Error",
-          description: "Failed to parse contract data",
-          variant: "destructive"
-        });
-      }
+      setContractCode(contractData.code);
+      setContractABI(abi);
+      setIsVerified(contractData.verified);
+      setDecompiled(contractData.decompiled);
       
-      // Add initial analysis message
-      setMessages([
-        {
-          role: "system",
-          content: contractData.verified 
-            ? "Connected to verified contract. You can now ask questions about its functionality."
-            : "Connected to unverified contract. Analysis will be based on bytecode patterns.",
+      setMessages(prev => [...prev, {
+        role: 'system',
+        content: `Connected to contract at ${address}`,
+        timestamp: new Date(),
+        type: 'success'
+      }]);
+      
+      if (!contractData.verified) {
+        setMessages(prev => [...prev, {
+          role: 'system',
+          content: 'Contract is not verified. Some features may be limited.',
           timestamp: new Date(),
-          type: "text"
-        },
-        {
-          role: "contract",
-          content: contractData.code,
-          timestamp: new Date(),
-          type: "code",
-          metadata: {
-            verified: contractData.verified,
-            message: contractData.message,
-            decompiled: contractData.decompiled
-          }
-        }
-      ]);
-
-      toast({
-        title: "Contract Connected",
-        description: "Successfully connected to the contract",
-      });
+          type: 'warning'
+        }]);
+      }
     } catch (error) {
       toast({
-        title: "Connection Failed",
-        description: error instanceof Error ? error.message : "Failed to connect to contract",
-        variant: "destructive",
+        title: "Error connecting to contract",
+        description: error instanceof Error ? error.message : "Unknown error occurred",
+        variant: "destructive"
       });
+      
+      setMessages(prev => [...prev, {
+        role: 'system',
+        content: error instanceof Error ? error.message : "Failed to connect to contract",
+        timestamp: new Date(),
+        type: 'error'
+      }]);
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleSendMessage = async () => {
-    if (!input.trim()) return;
-
-    const userMessage = {
-      role: "user",
+    if (!input.trim() || !address || !contractCode) return;
+    
+    const userMessage: Message = {
+      role: 'user',
       content: input,
       timestamp: new Date(),
-      type: "text",
+      type: 'text'
     };
-
-    setMessages((prev) => [...prev, userMessage as Message]);
+    
+    setMessages(prev => [...prev, userMessage]);
     setInput("");
-
+    setIsLoading(true);
+    
     try {
-      setIsLoading(true);
-
-      // Send to AI for analysis
-      const response = await fetch("/api/chat/analyze", {
-        method: "POST",
+      const response = await fetch('/api/ai/analyze', {
+        method: 'POST',
         headers: {
-          "Content-Type": "application/json",
+          'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           message: input,
           contractCode,
           contractABI,
-          address,
+          address
         }),
       });
 
       if (!response.ok) {
-        throw new Error("Failed to analyze message");
+        throw new Error('Failed to get AI response');
       }
 
       const data = await response.json();
-
-      // Determine the message type based on content and response type from API
-      let responseType: Message['type'] = 'text';
-      let responseContent = data.response;
-      let metadata = {};
-
-      if (data.type === 'code' || data.response.includes('```')) {
-        responseType = 'code';
-        // Clean up code blocks if present
-        responseContent = data.response.replace(/```[a-z]*\n/g, '').replace(/```/g, '').trim();
-      } else if (data.type === 'function') {
-        responseType = 'function';
-        try {
-          const parsedResponse = JSON.parse(data.response);
-          metadata = {
-            functionName: parsedResponse.functionName,
-            params: parsedResponse.params || {},
-            gasEstimate: parsedResponse.gasEstimate,
-            mantleSpecific: parsedResponse.mantleOptimizations
-          };
-          responseContent = parsedResponse.description || data.response;
-        } catch (e) {
-          // If parsing fails, fallback to text format
-          responseType = 'text';
-        }
-      } else if (data.response.toLowerCase().includes('warning') || 
-                 data.response.toLowerCase().includes('vulnerability')) {
-        responseType = 'warning';
-      } else if (data.response.toLowerCase().includes('error') || 
-                 data.response.toLowerCase().includes('failed')) {
-        responseType = 'error';
-      } else if (data.response.toLowerCase().includes('success') || 
-                 data.response.toLowerCase().includes('completed')) {
-        responseType = 'success';
-      }
-
-      setMessages((prev) => [
-        ...prev,
-        {
-          role: 'assistant' as const,
-          content: responseContent,
-          timestamp: new Date(),
-          type: responseType,
-          metadata,
-        },
-      ]);
+      
+      const aiMessage: Message = {
+        role: 'assistant',
+        content: data.response,
+        timestamp: new Date(),
+        type: 'text'
+      };
+      
+      setMessages(prev => [...prev, aiMessage]);
     } catch (error) {
       toast({
-        title: "Analysis Failed",
-        description: error instanceof Error ? error.message : "Failed to analyze message",
-        variant: "destructive",
+        title: "Error processing request",
+        description: error instanceof Error ? error.message : "Unknown error occurred",
+        variant: "destructive"
       });
+      
+      setMessages(prev => [...prev, {
+        role: 'system',
+        content: error instanceof Error ? error.message : "Failed to process request",
+        timestamp: new Date(),
+        type: 'error'
+      }]);
     } finally {
       setIsLoading(false);
     }
@@ -239,271 +175,247 @@ export default function ContractExplorer() {
           </p>
         </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-        <Card className="border-primary/20 backdrop-blur-sm bg-background/95">
-          <CardHeader className="space-y-1 p-4 sm:p-6">
-            <CardTitle className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-primary to-primary/50 bg-clip-text text-transparent">
-              Contract Chat
-            </CardTitle>
-            <CardDescription className="text-sm sm:text-base">
-              Interact with your smart contract through natural language
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex gap-3">
-              <div className="relative flex-1 group">
-                <Input
-                  placeholder="Enter contract address..."
-                  value={address}
-                  onChange={(e) => setAddress(e.target.value)}
-                  className="pl-4 h-11 transition-all duration-200 border-primary/20 focus:border-primary/40 bg-background/80 backdrop-blur-sm"
-                />
-                <div className="absolute inset-0 -z-10 bg-gradient-to-r from-primary/10 via-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity rounded-lg" />
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+          <Card className="border-purple-500/20 bg-purple-900/10 backdrop-blur-sm">
+            <CardHeader className="space-y-1 p-4 sm:p-6">
+              <CardTitle className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-purple-400 to-purple-600 bg-clip-text text-transparent">
+                Contract Chat
+              </CardTitle>
+              <CardDescription className="text-sm sm:text-base text-white/60">
+                Interact with your smart contract through natural language
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex gap-3">
+                <div className="relative flex-1 group">
+                  <Input
+                    placeholder="Enter contract address..."
+                    value={address}
+                    onChange={(e) => setAddress(e.target.value)}
+                    className="pl-4 h-11 transition-all duration-200 border-purple-500/20 focus:border-purple-500/40 bg-purple-900/20 backdrop-blur-sm text-white placeholder:text-white/40"
+                  />
+                  <div className="absolute inset-0 -z-10 bg-gradient-to-r from-purple-500/10 via-purple-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity rounded-lg" />
+                </div>
+                <Button 
+                  onClick={handleConnect} 
+                  disabled={isLoading || !address}
+                  className="h-11 px-6 bg-purple-600/90 text-white hover:bg-purple-500 border border-purple-500/30 shadow-lg shadow-purple-500/20 transition-all duration-200"
+                >
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                      Connecting...
+                    </>
+                  ) : (
+                    "Connect"
+                  )}
+                </Button>
               </div>
-              <Button 
-                onClick={handleConnect} 
-                disabled={isLoading || !address}
-                className="h-11 px-6 hover:shadow-lg hover:shadow-primary/20 transition-all duration-200"
-              >
-                {isLoading ? (
-                  <>
-                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                    Connecting...
-                  </>
-                ) : (
-                  "Connect"
-                )}
-              </Button>
-            </div>
 
-            <ScrollArea className="h-[500px] border rounded-lg p-4 bg-gradient-to-b from-background to-background/50">
-              <div className="space-y-6">
-                {messages.map((message, index) => (
-                  <div
-                    key={index}
-                    className={`flex ${
-                      message.role === "user" ? "justify-end" : "justify-start"
-                    } mb-4 animate-in slide-in-from-bottom-2`}
-                  >
-                    <div
-                      className={`max-w-[85%] backdrop-blur-sm transition-all duration-200 ${
-                        message.role === "user"
-                          ? "bg-primary text-primary-foreground shadow-lg shadow-primary/20"
-                          : message.role === "system"
-                          ? "bg-yellow-500/10 border border-yellow-500/20 shadow-lg shadow-yellow-500/10"
-                          : message.role === "contract"
-                          ? "bg-card/95 border border-border shadow-lg"
-                          : "bg-card/95 border border-border shadow-lg"
-                      } rounded-2xl p-5`}
-                    >
-                      {message.type === "code" ? (
-                        <CodeViewer code={message.content} />
-                      ) : message.type === "function" ? (
-                        <div className="space-y-2">
-                          <div className="flex items-center justify-between">
-                            <h4 className="font-medium">{message.metadata?.functionName}</h4>
-                            {message.metadata?.gasEstimate && (
-                              <Badge variant="outline" className="bg-primary/10">
-                                Gas: {message.metadata.gasEstimate}
-                              </Badge>
+              <div className="relative rounded-lg border border-purple-500/20 bg-black/40 backdrop-blur-sm overflow-hidden">
+                <ScrollArea className="h-[500px] p-4">
+                  <div className="space-y-4">
+                    {messages.filter(msg => msg.content?.trim()).map((message, index) => (
+                      <div
+                        key={index}
+                        className={`flex items-start space-x-2 ${
+                          message.role === "user" ? "justify-end" : "justify-start"
+                        } animate-in slide-in-from-bottom-2`}
+                      >
+                        {message.role !== "user" && (
+                          <div className="w-8 h-8 rounded-full bg-purple-600/20 border border-purple-500/20 flex items-center justify-center">
+                            {message.role === "assistant" ? (
+                              <Bot className="w-4 h-4 text-purple-400" />
+                            ) : message.role === "system" ? (
+                              <AlertTriangle className="w-4 h-4 text-yellow-400" />
+                            ) : (
+                              <Code2 className="w-4 h-4 text-purple-400" />
                             )}
                           </div>
-                          <p className="text-sm">{message.content}</p>
-                          {message.metadata?.mantleSpecific?.optimizations && (
-                            <div className="bg-primary/5 rounded p-2 mt-2">
-                              <p className="text-sm font-medium">Mantle Optimizations:</p>
-                              <ul className="list-disc list-inside text-sm">
-                                {message.metadata.mantleSpecific.optimizations.map((opt, i) => (
-                                  <li key={i}>{opt}</li>
-                                ))}
-                              </ul>
-                              {message.metadata.mantleSpecific.savings && (
-                                <p className="text-sm text-primary mt-1">
-                                  Potential savings: {message.metadata.mantleSpecific.savings}
-                                </p>
+                        )}
+                        
+                        <div className={`max-w-[80%] rounded-2xl p-4 ${
+                          message.role === "user"
+                            ? "bg-purple-600/90 text-white ml-auto"
+                            : message.role === "system"
+                            ? "bg-yellow-500/10 border border-yellow-500/20"
+                            : "bg-purple-900/40 border border-purple-500/20"
+                        }`}>
+                          {message.type === "code" ? (
+                            <div className="h-[300px] rounded-lg overflow-hidden border border-purple-500/20">
+                              <CodeViewer 
+                                code={message.content} 
+                                language={isVerified ? "solidity" : "javascript"}
+                              />
+                            </div>
+                          ) : message.type === "function" ? (
+                            <div className="space-y-2">
+                              <div className="flex items-center justify-between">
+                                <h4 className="font-medium text-purple-200">{message.metadata?.functionName}</h4>
+                                {message.metadata?.gasEstimate && (
+                                  <Badge variant="outline" className="bg-purple-500/10 text-purple-200 border-purple-500/20">
+                                    Gas: {message.metadata.gasEstimate}
+                                  </Badge>
+                                )}
+                              </div>
+                              <p className="text-sm text-white/80">{message.content}</p>
+                              {message.metadata?.mantleSpecific?.optimizations && (
+                                <div className="bg-purple-500/10 rounded-lg p-3 mt-2 border border-purple-500/20">
+                                  <p className="text-sm font-medium text-purple-200">Mantle Optimizations:</p>
+                                  <ul className="list-disc list-inside text-sm text-white/80 mt-1">
+                                    {message.metadata.mantleSpecific.optimizations.map((opt: string, i: number) => (
+                                      <li key={i}>{opt}</li>
+                                    ))}
+                                  </ul>
+                                  {message.metadata.mantleSpecific.savings && (
+                                    <p className="text-sm text-purple-300 mt-2">
+                                      Potential savings: {message.metadata.mantleSpecific.savings}
+                                    </p>
+                                  )}
+                                </div>
                               )}
                             </div>
-                          )}
-                        </div>
-                      ) : message.type === "warning" ? (
-                        <div className="flex items-start space-x-2 text-yellow-500">
-                          <AlertTriangle className="h-4 w-4 mt-1" />
-                          <p>{message.content}</p>
-                        </div>
-                      ) : message.type === "error" ? (
-                        <div className="flex items-start space-x-2 text-destructive">
-                          <XCircle className="h-4 w-4 mt-1" />
-                          <p>{message.content}</p>
-                        </div>
-                      ) : message.type === "success" ? (
-                        <div className="flex items-start space-x-2 text-green-500">
-                          <CheckCircle className="h-4 w-4 mt-1" />
-                          <p>{message.content}</p>
-                        </div>
-                      ) : (
-                        <div className="space-y-4 text-foreground">
-                          {message.content.split('###').map((section, index) => {
-                            if (index === 0) {
-                              // Process main content - remove markdown
-                              const mainContent = section
-                                .trim()
-                                .replace(/\*\*/g, '')
-                                .replace(/`/g, '');
-                              return (
-                                <div key={index} className="bg-card/50 rounded-lg p-4">
-                                  <p className="text-base leading-relaxed">{mainContent}</p>
-                                </div>
-                              );
-                            }
-                            
-                            const [title, ...content] = section.split('\n');
-                            const processedTitle = title.trim().replace(/\*\*/g, '');
-                            
-                            return (
-                              <div key={index} className="bg-card/50 rounded-lg p-4">
-                                <h3 className="text-lg font-semibold text-primary mb-3 border-b pb-2">
-                                  {processedTitle}
-                                </h3>
-                                <div className="space-y-3">
-                                  {content.map((paragraph, pIndex) => {
-                                    const processedText = paragraph
-                                      .trim()
-                                      .replace(/\*\*/g, '')
-                                      .replace(/`/g, '');
-                                    
-                                    if (processedText.startsWith('-')) {
-                                      return (
-                                        <div key={pIndex} className="flex items-start space-x-2 pl-4">
-                                          <span className="text-primary">•</span>
-                                          <span className="text-sm leading-relaxed flex-1">
-                                            {processedText.substring(1).trim()}
-                                          </span>
-                                        </div>
-                                      );
-                                    }
-                                    
-                                    return (
-                                      <p key={pIndex} className="text-sm leading-relaxed text-foreground/90">
-                                        {processedText}
-                                      </p>
-                                    );
-                                  })}
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      )}
-                      <div className="flex items-center justify-between mt-2 pt-2 border-t border-border/40">
-                        <div className="text-xs opacity-70">
-                          {message.timestamp.toLocaleTimeString()}
-                        </div>
-                        {message.type === "function" && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-7 text-xs"
-                            onClick={() => {
-                              setInput(`Call ${message.metadata?.functionName} with parameters...`);
-                            }}
-                          >
-                            <Play className="h-3 w-3 mr-1" />
-                            Try it
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </ScrollArea>
-
-            <div className="flex gap-3 relative group">
-              <Textarea
-                placeholder="Ask about the contract or request an action..."
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyPress={(e) => e.key === "Enter" && !e.shiftKey && handleSendMessage()}
-                className="min-h-[100px] pr-14 transition-all duration-200 border-primary/20 focus:border-primary/40 bg-background/80 backdrop-blur-sm resize-none"
-              />
-              <Button
-                className="absolute bottom-3 right-3 h-10 w-10 rounded-full p-0 hover:scale-105 hover:shadow-lg hover:shadow-primary/20 transition-all duration-200"
-                onClick={handleSendMessage}
-                disabled={isLoading || !input.trim() || !address}
-              >
-                {isLoading ? (
-                  <Loader2 className="h-5 w-5 animate-spin" />
-                ) : (
-                  <Send className="h-5 w-5" />
-                )}
-              </Button>
-              <div className="absolute inset-0 -z-10 bg-gradient-to-r from-primary/10 via-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity rounded-lg" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="border-primary/20">
-          <CardHeader>
-            <CardTitle>Contract Analysis</CardTitle>
-            <CardDescription>
-              Visualize and understand contract behavior
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {contractCode ? (
-              <div className="space-y-4">
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <h3 className="text-sm font-medium">Contract Code</h3>
-                    <Badge variant="outline" className={
-                      contractCode.includes("not verified") 
-                        ? "bg-yellow-500/10 text-yellow-500"
-                        : "bg-green-500/10 text-green-500"
-                    }>
-                      {contractCode.includes("not verified") ? "Unverified" : "Verified"}
-                    </Badge>
-                  </div>
-                  <CodeViewer 
-                    code={contractCode} 
-                    className="max-h-[300px]"
-                    language={contractCode.includes("not verified") ? "javascript" : "solidity"}
-                  />
-                </div>
-                {contractABI && (
-                  <div>
-                    <h3 className="text-sm font-medium mb-2">Available Functions</h3>
-                    <div className="space-y-2">
-                      {contractABI.map((item: any, index: number) => (
-                        <div
-                          key={index}
-                          className="p-2 rounded-md border border-border/40 hover:border-primary/40 transition-colors"
-                        >
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center space-x-2">
-                              <Code2 className="h-4 w-4 text-primary" />
-                              <span className="font-mono text-sm">
-                                {item.name}
-                              </span>
+                          ) : message.type === "warning" ? (
+                            <div className="flex items-start space-x-2 text-yellow-400">
+                              <AlertTriangle className="h-4 w-4 mt-1 flex-shrink-0" />
+                              <p className="text-sm">{message.content}</p>
                             </div>
-                            <Badge variant="outline">
-                              {item.type}
-                            </Badge>
+                          ) : message.type === "error" ? (
+                            <div className="flex items-start space-x-2 text-red-400">
+                              <XCircle className="h-4 w-4 mt-1 flex-shrink-0" />
+                              <p className="text-sm">{message.content}</p>
+                            </div>
+                          ) : message.type === "success" ? (
+                            <div className="flex items-start space-x-2 text-green-400">
+                              <CheckCircle className="h-4 w-4 mt-1 flex-shrink-0" />
+                              <p className="text-sm">{message.content}</p>
+                            </div>
+                          ) : (
+                            <div className="space-y-3 text-white/90">
+                              <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.content}</p>
+                            </div>
+                          )}
+                          
+                          <div className="flex items-center justify-between mt-2 pt-2 border-t border-purple-500/20">
+                            <div className="text-xs text-white/40">
+                              {message.timestamp.toLocaleTimeString()}
+                            </div>
+                            {message.type === "function" && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-7 text-xs hover:bg-purple-500/20 text-purple-200"
+                                onClick={() => {
+                                  setInput(`Call ${message.metadata?.functionName} with parameters...`);
+                                }}
+                              >
+                                <Play className="h-3 w-3 mr-1" />
+                                Try it
+                              </Button>
+                            )}
                           </div>
                         </div>
-                      ))}
+                        
+                        {message.role === "user" && (
+                          <div className="w-8 h-8 rounded-full bg-purple-600 flex items-center justify-center">
+                            <User className="w-4 h-4 text-white" />
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </ScrollArea>
+              </div>
+
+              <div className="relative">
+                <Textarea
+                  placeholder="Ask about the contract or request an action..."
+                  value={input}
+                  onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setInput(e.target.value)}
+                  onKeyPress={(e: React.KeyboardEvent<HTMLTextAreaElement>) => e.key === "Enter" && !e.shiftKey && handleSendMessage()}
+                  className="min-h-[100px] pr-14 bg-purple-900/20 border-purple-500/20 focus:border-purple-500/40 text-white placeholder:text-white/40 resize-none rounded-xl"
+                />
+                <Button
+                  className="absolute bottom-3 right-3 h-10 w-10 rounded-full p-0 bg-purple-600 hover:bg-purple-500 transition-all duration-200"
+                  onClick={handleSendMessage}
+                  disabled={isLoading || !input.trim() || !address}
+                >
+                  {isLoading ? (
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                  ) : (
+                    <Send className="h-5 w-5" />
+                  )}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-purple-500/20 bg-purple-900/10 backdrop-blur-sm">
+            <CardHeader>
+              <CardTitle className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-purple-400 to-purple-600 bg-clip-text text-transparent">
+                Contract Analysis
+              </CardTitle>
+              <CardDescription className="text-sm sm:text-base text-white/60">
+                Visualize and understand contract behavior
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {contractCode ? (
+                <div className="space-y-4">
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <h3 className="text-sm font-medium text-white/80">Contract Code</h3>
+                      <Badge variant="outline" className={
+                        isVerified 
+                          ? "bg-green-500/10 text-green-400 border-green-500/20"
+                          : "bg-yellow-500/10 text-yellow-400 border-yellow-500/20"
+                      }>
+                        {isVerified ? "Verified" : "Unverified"}
+                      </Badge>
+                    </div>
+                    <div className="relative rounded-lg border border-purple-500/20 bg-black/40 backdrop-blur-sm overflow-hidden">
+                      <CodeViewer 
+                        code={isVerified ? contractCode : (decompiled || contractCode)} 
+                        className="h-[calc(100vh-400px)] min-h-[400px]"
+                        language={isVerified ? "solidity" : "javascript"}
+                      />
                     </div>
                   </div>
-                )}
-              </div>
-            ) : (
-              <div className="text-center py-8 text-muted-foreground">
-                Connect to a contract to see its analysis
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-        </main>
-      </div>
-    );
+                  {contractABI && (
+                    <div>
+                      <h3 className="text-sm font-medium mb-2 text-white/80">Available Functions</h3>
+                      <div className="space-y-2">
+                        {contractABI.map((item: any, index: number) => (
+                          <div
+                            key={index}
+                            className="p-3 rounded-lg border border-purple-500/20 bg-purple-900/20 hover:border-purple-500/40 transition-colors"
+                          >
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center space-x-2">
+                                <Code2 className="h-4 w-4 text-purple-400" />
+                                <span className="font-mono text-sm text-white/80">
+                                  {item.name}
+                                </span>
+                              </div>
+                              <Badge variant="outline" className="bg-purple-500/10 text-purple-200 border-purple-500/20">
+                                {item.type}
+                              </Badge>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="text-center py-8 text-white/40">
+                  Connect to a contract to see its analysis
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      </main>
+    </div>
+  );
 }

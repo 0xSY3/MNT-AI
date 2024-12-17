@@ -3,7 +3,6 @@ import { Pool } from 'pg';
 import * as schema from "./schema";
 import * as dotenv from 'dotenv';
 
-// Load environment variables from .env file
 dotenv.config();
 
 if (!process.env.DATABASE_URL) {
@@ -14,7 +13,27 @@ if (!process.env.DATABASE_URL) {
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+  ssl: {
+    rejectUnauthorized: false 
+  },
+  max: 20, 
+  idleTimeoutMillis: 30000, 
+  connectionTimeoutMillis: 2000,
 });
+
+pool.on('error', (err) => {
+  console.error('Unexpected error on idle client', err);
+  process.exit(-1);
+});
+
+pool.connect()
+  .then(client => {
+    console.log('Successfully connected to database');
+    client.release();
+  })
+  .catch(err => {
+    console.error('Error connecting to the database:', err);
+    throw err;
+  });
 
 export const db = drizzle(pool, { schema });

@@ -25,9 +25,8 @@ export default defineConfig({
   },
   root: path.resolve(__dirname, "client"),
   build: {
-    outDir: path.resolve(__dirname, "client/dist"),
+    outDir: path.resolve(__dirname, "dist/public"),
     emptyOutDir: true,
-    // Add optimization configurations
     target: 'esnext',
     minify: 'esbuild',
     rollupOptions: {
@@ -46,8 +45,7 @@ export default defineConfig({
             '@radix-ui/react-accordion',
             '@radix-ui/react-alert-dialog',
             '@radix-ui/react-dialog',
-            '@radix-ui/react-tabs',
-            // ... other UI components
+            '@radix-ui/react-tabs'
           ]
         }
       }

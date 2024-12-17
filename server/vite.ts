@@ -43,7 +43,8 @@ export async function setupVite(app: Express, server: Server) {
 }
 
 export function serveStatic(app: Express) {
-  const distPath = path.resolve(__dirname, "public");
+  // Update the path to match the Vite build output directory
+  const distPath = path.resolve(__dirname, "..", "..", "dist", "public");
 
   if (!fs.existsSync(distPath)) {
     throw new Error(

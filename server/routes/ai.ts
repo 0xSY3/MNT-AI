@@ -3,11 +3,6 @@ import OpenAI from 'openai';
 
 const router = Router();
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
-
-// Previous message constants remain unchanged...
 const SYSTEM_MESSAGE = `You are MNT AI, an AI assistant specialized in the Mantle Network ecosystem. You help users understand:
 
 1. Mantle Network's Layer 2 scaling solution
@@ -59,6 +54,44 @@ const CONTRACT_SYSTEM_MESSAGE = `You are a smart contract generation AI speciali
 
 Generate production-ready code that leverages Mantle Network's unique capabilities while maintaining high security standards.`;
 
+const CONTRACT_SUMMARY_MESSAGE = `You are a smart contract analyzer specialized in explaining Solidity contracts in a clear, human-readable format. For each contract analysis:
+
+1. Provide a high-level overview of what the contract does
+2. Explain the main features and functionality
+3. Break down important functions and their purposes
+4. Identify key state variables and their roles
+5. Highlight any special mechanisms or patterns used
+6. Note any external interactions or dependencies
+7. Explain access control and permissions
+
+Format your response in this structure:
+{
+  "overview": "Brief 1-2 sentence description of what the contract does",
+  "purpose": "Detailed explanation of the contract's main purpose and use cases",
+  "features": [
+    {
+      "name": "Feature name",
+      "description": "Clear explanation of what this feature does"
+    }
+  ],
+  "functions": [
+    {
+      "name": "Function name",
+      "purpose": "What this function does",
+      "access": "Who can call this function"
+    }
+  ],
+  "stateVariables": [
+    {
+      "name": "Variable name",
+      "purpose": "What this variable is used for"
+    }
+  ],
+  "specialNotes": [
+    "Any important notes about security, patterns, or special considerations"
+  ]
+}`;
+
 const SECURITY_ANALYSIS_MESSAGE = `You are a smart contract security auditor specialized in analyzing Solidity contracts for the Mantle Network. For each analysis:
 
 1. Check for common vulnerabilities (reentrancy, overflow/underflow, etc.)
@@ -103,8 +136,12 @@ router.post('/chat', async (req, res) => {
       throw new Error('OpenAI API key not configured');
     }
 
+    const openai = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY
+    });
+
     const completion = await openai.chat.completions.create({
-      model: "gpt-3.5-turbo",
+      model: "gpt-4",
       messages: [
         { role: "system", content: SYSTEM_MESSAGE },
         { role: "user", content: message }
@@ -141,7 +178,10 @@ router.post('/generate', async (req, res) => {
       throw new Error('OpenAI API key not configured');
     }
 
-    // Construct the prompt with Mantle-specific requirements
+    const openai = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY
+    });
+
     const prompt = `Generate a Solidity smart contract optimized for the Mantle Network with these requirements:
 
 Description: ${description}
@@ -162,13 +202,13 @@ Please provide only the Solidity code without any additional explanation.
 Include detailed comments explaining Mantle-specific optimizations and security considerations.`;
 
     const completion = await openai.chat.completions.create({
-      model: "gpt-3.5-turbo",
+      model: "gpt-4",
       messages: [
         { role: "system", content: CONTRACT_SYSTEM_MESSAGE },
         { role: "user", content: prompt }
       ],
       temperature: 0.2,
-      max_tokens: 3000,
+      max_tokens: 4000,
       presence_penalty: 0,
       frequency_penalty: 0
     });
@@ -183,6 +223,64 @@ Include detailed comments explaining Mantle-specific optimizations and security 
   }
 });
 
+router.post('/summarize', async (req, res) => {
+  try {
+    const { code } = req.body;
+    
+    if (!code) {
+      return res.status(400).json({ error: 'Contract code is required' });
+    }
+
+    if (!process.env.OPENAI_API_KEY) {
+      throw new Error('OpenAI API key not configured');
+    }
+
+    const openai = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY
+    });
+
+    const prompt = `Analyze this Solidity smart contract and provide a clear, human-readable summary:
+
+${code}
+
+Please explain:
+1. What the contract does
+2. Its main features and functionality
+3. Important functions and their purposes
+4. Key state variables
+5. Any special mechanisms or patterns
+6. External interactions
+7. Access control and permissions
+
+Return the analysis in the specified JSON format with overview, purpose, features, functions, stateVariables, and specialNotes.`;
+
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4",
+      messages: [
+        { role: "system", content: CONTRACT_SUMMARY_MESSAGE },
+        { role: "user", content: prompt }
+      ],
+      temperature: 0.1,
+      max_tokens: 3000
+    });
+
+    const summaryText = completion.choices[0].message.content || '';
+    
+    // Extract JSON from the response
+    const jsonMatch = summaryText.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) {
+      throw new Error('Invalid summary format received');
+    }
+
+    const summary = JSON.parse(jsonMatch[0]);
+    
+    res.json(summary);
+  } catch (error) {
+    console.error('Contract Summary Error:', error);
+    res.status(500).json({ error: 'Failed to generate contract summary' });
+  }
+});
+
 router.post('/analyze', async (req, res) => {
   try {
     const { code } = req.body;
@@ -194,6 +292,10 @@ router.post('/analyze', async (req, res) => {
     if (!process.env.OPENAI_API_KEY) {
       throw new Error('OpenAI API key not configured');
     }
+
+    const openai = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY
+    });
 
     const prompt = `Analyze this Solidity smart contract for security issues and optimization opportunities, specifically for deployment on Mantle Network:
 
@@ -219,13 +321,13 @@ Focus on:
 Return the analysis in the specified JSON format with overallRisk and issues array.`;
 
     const completion = await openai.chat.completions.create({
-      model: "gpt-3.5-turbo",
+      model: "gpt-4",
       messages: [
         { role: "system", content: SECURITY_ANALYSIS_MESSAGE },
         { role: "user", content: prompt }
       ],
       temperature: 0.1,
-      max_tokens: 2500
+      max_tokens: 3000
     });
 
     const analysisText = completion.choices[0].message.content || '';

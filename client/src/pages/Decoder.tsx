@@ -13,23 +13,76 @@ import { useTypingEffect } from "@/hooks/use-typing-effect";
 interface DecoderResponse {
   contractCode: string;
   summary: string;
+  description: string;
   features: string[];
+  functions: string[];
+  type: string;
 }
 
 async function decodeContract(address: string): Promise<DecoderResponse> {
-  const response = await fetch("/api/decoder/analyze", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ address }),
-  });
+  try {
+    // Validate address format
+    if (!address) {
+      throw new Error("Contract address is required");
+    }
+    
+    if (!address.match(/^0x[0-9a-fA-F]{40}$/i)) {
+      throw new Error("Invalid contract address format. Must be a valid Ethereum address starting with 0x");
+    }
 
-  if (!response.ok) {
-    throw new Error("Failed to analyze contract");
+    // Create abort controller for timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 60000); // Increased timeout to 60 seconds
+
+    try {
+      const response = await fetch("/api/decoder/analyze", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ 
+          address,
+          network: "mantle", // Default to Mantle network
+        }),
+        signal: controller.signal
+      });
+
+      clearTimeout(timeoutId); // Clear timeout if request succeeds
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        if (errorData.explorerUrl) {
+          throw new Error(`${errorData.error}. View contract on explorer: ${errorData.explorerUrl}`);
+        }
+        throw new Error(errorData.error || 'Failed to analyze contract');
+      }
+
+      const data = await response.json();
+      
+      // Validate response structure
+      if (!data || typeof data !== 'object') {
+        throw new Error("Invalid response format from decoder service");
+      }
+
+      return {
+        contractCode: data.contractCode || '',
+        summary: data.summary || 'No summary available',
+        description: data.description || '',
+        features: data.features || [],
+        functions: data.functions || [],
+        type: data.type || 'Unknown',
+      };
+    } catch (error: unknown) {
+      if (error instanceof DOMException && error.name === 'AbortError') {
+        throw new Error('Analysis request timed out. This could be due to high network latency or complex contract analysis. Please try again.');
+      }
+      console.error("Contract decode error:", error);
+      throw error instanceof Error ? error : new Error("Failed to analyze contract");
+    }
+  } catch (error: unknown) {
+    console.error("Contract decode error:", error);
+    throw error instanceof Error ? error : new Error("Failed to analyze contract");
   }
-
-  return response.json();
 }
 
 export default function Decoder() {
@@ -74,6 +127,14 @@ export default function Decoder() {
       return;
     }
 
+    // Clear previous results when starting new analysis
+    setResult(null);
+    
+    toast({
+      title: "Analysis Started",
+      description: "Starting contract analysis. This may take up to 60 seconds...",
+    });
+
     decodeMutation.mutate(address);
   };
 
@@ -109,7 +170,7 @@ export default function Decoder() {
           <CardHeader>
             <CardTitle className="text-white">Contract Analysis</CardTitle>
             <CardDescription className="text-white/60">
-              Enter a smart contract address to analyze
+              Enter a smart contract address to analyze. Analysis may take up to 60 seconds.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -143,17 +204,45 @@ export default function Decoder() {
             {result && (
               <div className="space-y-4 mt-6">
                 <div className="bg-purple-500/5 rounded-lg p-4 space-y-2 border border-purple-500/10">
-                  <h3 className="font-medium text-white">Summary</h3>
-                  <p className="text-white/80">{displayedSummary}</p>
+                  <h3 className="font-medium text-white">Contract Analysis</h3>
+                  <div className="space-y-4">
+                    <div>
+                      <h4 className="text-white/90 font-medium">Type</h4>
+                      <p className="text-white/80">{result.type}</p>
+                    </div>
+                    <div>
+                      <h4 className="text-white/90 font-medium">Summary</h4>
+                      <p className="text-white/80">{displayedSummary}</p>
+                    </div>
+                    {result.description && (
+                      <div>
+                        <h4 className="text-white/90 font-medium">Description</h4>
+                        <p className="text-white/80">{result.description}</p>
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 {result.features?.length > 0 && (
                   <div className="bg-purple-500/5 rounded-lg p-4 space-y-2 border border-purple-500/10">
                     <h3 className="font-medium text-white">Key Features</h3>
-                    <ul className="list-disc list-inside space-y-1">
+                    <ul className="list-disc list-inside space-y-2">
                       {result.features.map((feature, index) => (
                         <li key={index} className="text-white/80">
                           {feature}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {result.functions?.length > 0 && (
+                  <div className="bg-purple-500/5 rounded-lg p-4 space-y-2 border border-purple-500/10">
+                    <h3 className="font-medium text-white">Contract Functions</h3>
+                    <ul className="list-disc list-inside space-y-2">
+                      {result.functions.map((func, index) => (
+                        <li key={index} className="text-white/80">
+                          {func}
                         </li>
                       ))}
                     </ul>

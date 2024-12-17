@@ -6,6 +6,8 @@ import { ethers } from 'ethers';
 import solc from 'solc';
 import { CONTRACT_COMPILER_VERSION, COMPILER_SETTINGS } from './config/mantle';
 import aiRouter from './routes/ai';
+import contractRouter from './routes/contract';
+import decoderRouter from './routes/decoder';
 
 // Helper function to truncate large contract code
 function truncateContractCode(code: string, maxLength: number = 8000): string {
@@ -70,6 +72,11 @@ function formatContractAnalysis(analysis: any) {
 }
 
 export function registerRoutes(app: Express) {
+  // Register routers
+  app.use('/api/ai', aiRouter);
+  app.use('/api/contract', contractRouter);
+  app.use('/api/decoder', decoderRouter);
+
   // Contract Compilation endpoint
   app.post("/api/compile", async (req: any, res: any) => {
     try {
@@ -130,9 +137,6 @@ export function registerRoutes(app: Express) {
     }
   });
 
-  // Register AI Assistant routes
-  app.use('/api/ai', aiRouter);
-
   // AI Contract Generation endpoint
   app.post("/api/ai/generate", async (req: any, res: any) => {
     try {
@@ -151,7 +155,19 @@ export function registerRoutes(app: Express) {
         });
       }
 
-      // Simplified system prompt
+      const openai = new OpenAI({
+        apiKey: process.env.OPENAI_API_KEY
+      });
+
+      const systemPrompt = `You are a smart contract expert. Analyze the provided smart contract and return a detailed analysis in the following JSON format:
+{
+  "title": "Contract name/title",
+  "description": "Brief overview of the contract",
+  "purpose": "Main purpose of the contract",
+  "category": "Contract category/type",
+  "mainFeatures": ["Array of main features"],
+  "functions": [{
+    "name": "Function name",
     "description": "What the function does",
     "visibility": "public/private/external/internal",
     "parameters": ["Array of parameters with types"],
@@ -166,9 +182,7 @@ export function registerRoutes(app: Express) {
   "accessControl": ["Access control mechanisms"],
   "securityFeatures": ["Security features implemented"],
   "securityConsiderations": ["Security considerations"]
-}
-
-Provide detailed, human-readable descriptions for each field. Focus on explaining the contract's functionality in clear, non-technical terms while including technical details where relevant.`;
+}`;
 
       // Get AI analysis of the contract
       const completion = await openai.chat.completions.create({
@@ -177,7 +191,7 @@ Provide detailed, human-readable descriptions for each field. Focus on explainin
           { role: "system", content: systemPrompt },
           { 
             role: "user", 
-            content: "Analyze this smart contract:\n\n" + (contractCode ? truncateContractCode(contractCode) : "No contract code available") 
+            content: "Analyze this smart contract:\n\n" + (description || "No contract description available") 
           }
         ],
         temperature: 0.2,
@@ -193,16 +207,6 @@ Provide detailed, human-readable descriptions for each field. Focus on explainin
         analysis: formattedAnalysis
       };
       
-      // Include transaction data if available
-      if (transactionData) {
-        response.transaction = transactionData;
-      }
-      
-      // Include contract code if available
-      if (contractCode && contractCode !== '0x') {
-        response.contractCode = contractCode;
-      }
-      
       res.json(response);
 
     } catch (error) {
@@ -213,5 +217,4 @@ Provide detailed, human-readable descriptions for each field. Focus on explainin
       });
     }
   });
-
-[Rest of the code remains unchanged]
+}

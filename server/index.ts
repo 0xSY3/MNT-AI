@@ -2,6 +2,10 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic } from "./vite";
 import { createServer } from "http";
+import dotenv from 'dotenv';
+
+// Load environment variables from .env file
+dotenv.config();
 
 function log(message: string) {
   const formattedTime = new Date().toLocaleTimeString("en-US", {
@@ -79,9 +83,9 @@ app.use((req, res, next) => {
     serveStatic(app);
     // Production (Vercel) port
     const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
-  log(`Server running on port ${PORT}`);
-});
+    server.listen(PORT, () => {
+      log(`Server running on port ${PORT}`);
+    });
   }
 })().catch(error => {
   console.error('Server initialization error:', error);

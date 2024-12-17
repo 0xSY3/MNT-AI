@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import solc from 'solc';
 import { ethers } from 'ethers';
-import { CONTRACT_COMPILER_VERSION } from '../../client/src/config/mantle';
+import { CONTRACT_COMPILER_VERSION, COMPILER_SETTINGS } from '../../client/src/config/mantle';
 
 const router = Router();
 
@@ -65,65 +65,106 @@ function parseSourceCode(data: any): { sourceCode: string; contractName: string;
 
 router.post('/compile', async (req, res) => {
   try {
+    console.log('Compile request body:', req.body); // Added logging
     const { code } = req.body;
     
     if (!code) {
+      console.log('No code provided in request body'); // Added logging
       return res.status(400).json({ error: 'Contract code is required' });
     }
+
+    // Add SPDX License Identifier if missing
+    const spdxPattern = /\/\/ SPDX-License-Identifier:.*/;
+    const hasLicense = spdxPattern.test(code);
+    const codeWithLicense = hasLicense ? code : `// SPDX-License-Identifier: MIT\n${code}`;
+
+    // Add pragma if missing
+    const pragmaPattern = /pragma solidity.*;/;
+    const hasPragma = pragmaPattern.test(codeWithLicense);
+    const finalCode = hasPragma ? codeWithLicense : `pragma solidity ^${CONTRACT_COMPILER_VERSION};\n${codeWithLicense}`;
+
+    console.log('Processing code with length:', finalCode.length); // Added logging
 
     // Create input object for solc
     const input = {
       language: 'Solidity',
       sources: {
         'contract.sol': {
-          content: code
+          content: finalCode
         }
       },
       settings: {
+        ...COMPILER_SETTINGS,
         outputSelection: {
           '*': {
             '*': ['*']
           }
-        },
-        optimizer: {
-          enabled: true,
-          runs: 200
         }
       }
     };
 
-    // Find solc version that matches CONTRACT_COMPILER_VERSION
-    const solcVersion = CONTRACT_COMPILER_VERSION || '0.8.19';
-    
     try {
-      // Compile the contract
-      const output = JSON.parse(
-        solc.compile(JSON.stringify(input))
-      );
+      // Load specific compiler version
+      const output = JSON.parse(solc.compile(JSON.stringify(input)));
 
-      // Check for compilation errors
+      // Check for compilation errors and warnings
       if (output.errors) {
         const errors = output.errors.filter((error: any) => error.severity === 'error');
+        const warnings = output.errors.filter((error: any) => error.severity === 'warning');
+        
+        // Format error messages for better readability
+        const formatError = (error: any) => ({
+          type: error.type,
+          severity: error.severity,
+          message: error.message,
+          line: error.sourceLocation?.start,
+          component: error.component,
+          errorCode: error.errorCode
+        });
+
+        // Log warnings but don't fail compilation
+        if (warnings.length > 0) {
+          console.log('Compilation warnings:', warnings.map(formatError));
+        }
+        
         if (errors.length > 0) {
+          console.log('Compilation errors:', errors.map(formatError)); // Added logging
           return res.status(400).json({
             error: 'Compilation failed',
-            details: errors.map((error: any) => error.message)
+            details: errors.map(formatError)
           });
         }
       }
 
       // Get the contract
-      const contractFile = Object.keys(output.contracts['contract.sol'])[0];
+      const contractFiles = Object.keys(output.contracts['contract.sol']);
+      if (contractFiles.length === 0) {
+        throw new Error('No contracts found in source file');
+      }
+
+      const contractFile = contractFiles[0];
       const contract = output.contracts['contract.sol'][contractFile];
+
+      if (!contract || !contract.abi || !contract.evm || !contract.evm.bytecode) {
+        throw new Error('Invalid compilation output: missing ABI or bytecode');
+      }
 
       // Return the ABI and bytecode
       res.json({
         abi: contract.abi,
-        bytecode: contract.evm.bytecode.object
+        bytecode: contract.evm.bytecode.object,
+        warnings: output.errors?.filter((error: any) => error.severity === 'warning')
+          .map((warning: any) => ({
+            message: warning.message,
+            line: warning.sourceLocation?.start
+          }))
       });
     } catch (error) {
       console.error('Compilation error:', error);
-      res.status(500).json({ error: 'Failed to compile contract' });
+      res.status(500).json({ 
+        error: 'Failed to compile contract',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      });
     }
   } catch (error) {
     console.error('Server error:', error);
@@ -173,7 +214,7 @@ router.get('/source/:address', async (req, res) => {
       
       // Try different API endpoint patterns
       const apiEndpoints = [
-        `/api?module=contract&action=getsourcecode&address=${address}`, // Try etherscan-style first
+        `/api?module=contract&action=getsourcecode&address=${address}`,
         `/v2/smart-contracts/${address}/source-code`,
         `/v1/contracts/${address}/source-code`,
         `/contracts/${address}/source-code`

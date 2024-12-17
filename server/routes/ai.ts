@@ -22,9 +22,9 @@ const CONTRACT_SYSTEM_MESSAGE = `You are a smart contract generation AI speciali
 
 2. Security and Standards:
    - Follow Mantle Network's security best practices
-   - Implement proper access control using OpenZeppelin contracts
+   - Implement all security features directly in the contract without using imports
    - Use safe math operations (built into Solidity ^0.8.0)
-   - Include reentrancy guards where necessary
+   - Include reentrancy guards implemented directly in the contract
    - Emit events for all important state changes
 
 3. Mantle-Specific Features:
@@ -39,6 +39,7 @@ const CONTRACT_SYSTEM_MESSAGE = `You are a smart contract generation AI speciali
    - Implement proper error handling with custom error messages
    - Use modular design patterns for better upgradability
    - Include events for off-chain tracking
+   - DO NOT USE ANY IMPORTS - implement all required functionality directly in the contract
 
 5. Gas Optimization:
    - Pack storage variables efficiently
@@ -52,7 +53,7 @@ const CONTRACT_SYSTEM_MESSAGE = `You are a smart contract generation AI speciali
    - Consider edge cases related to L2 specifics
    - Add validation for cross-chain interactions
 
-Generate production-ready code that leverages Mantle Network's unique capabilities while maintaining high security standards.`;
+Generate production-ready code that leverages Mantle Network's unique capabilities while maintaining high security standards. All functionality must be implemented directly in the contract without using any external imports.`;
 
 const CONTRACT_SUMMARY_MESSAGE = `You are a smart contract analyzer specialized in explaining Solidity contracts in a clear, human-readable format. For each contract analysis:
 
@@ -222,9 +223,11 @@ Requirements:
 3. Implement proper security measures
 4. Use Mantle-specific features where appropriate
 5. Add comprehensive documentation
+6. DO NOT USE ANY IMPORTS - implement all required functionality directly in the contract
 
 Please provide only the Solidity code without any additional explanation.
-Include detailed comments explaining Mantle-specific optimizations and security considerations.`;
+Include detailed comments explaining Mantle-specific optimizations and security considerations.
+Remember: Do not use any import statements - all functionality must be implemented directly in the contract.`;
 
     const completion = await openai.chat.completions.create({
       model: "gpt-3.5-turbo",
@@ -365,9 +368,9 @@ Return the analysis in the specified JSON format with overview, purpose, feature
 
 router.post('/analyze', async (req, res) => {
   try {
-    const { message, contractCode, contractABI, address } = req.body;
+    const { code } = req.body;
     
-    if (!contractCode) {
+    if (!code) {
       return res.status(400).json({ error: 'Contract code is required' });
     }
 
@@ -379,40 +382,45 @@ router.post('/analyze', async (req, res) => {
       apiKey: process.env.OPENAI_API_KEY
     });
 
-    const prompt = `Analyze this smart contract and respond to the user's question:
+    const prompt = `Perform a security analysis of this Solidity smart contract:
 
-Contract Code:
-${contractCode}
+${code}
 
-${contractABI ? `Contract ABI:
-${JSON.stringify(contractABI, null, 2)}` : ''}
+Analyze for:
+1. Common vulnerabilities (reentrancy, overflow/underflow, etc.)
+2. Gas optimization opportunities specific to Mantle L2
+3. Access control mechanisms
+4. External contract interactions
+5. Event emissions
+6. State variable handling
+7. Mantle-specific security considerations
 
-${address ? `Contract Address: ${address}` : ''}
-
-User Question: ${message}
-
-Provide a clear and concise response focusing on:
-1. Direct answers to the user's question
-2. Relevant code explanations
-3. Security considerations if applicable
-4. Gas optimization suggestions if relevant
-5. Mantle-specific implications`;
+Return the analysis in the specified JSON format with overallRisk and issues array.`;
 
     const completion = await openai.chat.completions.create({
       model: "gpt-3.5-turbo",
       messages: [
-        { role: "system", content: SYSTEM_MESSAGE },
+        { role: "system", content: SECURITY_ANALYSIS_MESSAGE },
         { role: "user", content: prompt }
       ],
-      temperature: 0.7,
-      max_tokens: 2000
+      temperature: 0.1,
+      max_tokens: 3000
     });
 
-    const response = completion.choices[0].message.content || '';
-    res.json({ response });
+    const analysisText = completion.choices[0].message.content || '';
+    
+    // Extract JSON from the response
+    const jsonMatch = analysisText.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) {
+      throw new Error('Invalid analysis format received');
+    }
+
+    const analysis = JSON.parse(jsonMatch[0]);
+    
+    res.json(analysis);
   } catch (error) {
-    console.error('Contract Analysis Error:', error);
-    res.status(500).json({ error: 'Failed to analyze contract' });
+    console.error('Security Analysis Error:', error);
+    res.status(500).json({ error: 'Failed to perform security analysis' });
   }
 });
 

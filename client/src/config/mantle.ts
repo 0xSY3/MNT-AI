@@ -10,7 +10,7 @@ export const MANTLE_TESTNET_CONFIG = {
   blockExplorerUrls: ["https://explorer.sepolia.mantle.xyz"]
 };
 
-export const CONTRACT_COMPILER_VERSION = "0.8.19";
+export const CONTRACT_COMPILER_VERSION = "0.8.28";
 export const COMPILER_SETTINGS = {
   optimizer: {
     enabled: true,
@@ -18,3 +18,4 @@ export const COMPILER_SETTINGS = {
   },
   evmVersion: "paris"
 };
+ 

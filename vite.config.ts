@@ -58,6 +58,13 @@ export default defineConfig({
     exclude: ['@monaco-editor/react']
   },
   server: {
+    proxy: {
+      '/api': {
+        target: 'http://localhost:5000',
+        changeOrigin: true,
+        secure: false
+      }
+    },
     hmr: {
       overlay: false
     },

@@ -3,6 +3,8 @@ import { registerRoutes } from "./routes";
 import { setupVite, serveStatic } from "./vite";
 import { createServer } from "http";
 import dotenv from 'dotenv';
+import { db } from '../db';
+import { sql } from 'drizzle-orm';
 
 // Load environment variables from .env file
 dotenv.config();
@@ -62,30 +64,39 @@ app.use((req, res, next) => {
 });
 
 (async () => {
-  registerRoutes(app);
-  const server = createServer(app);
+  try {
+    // Test database connection
+    const result = await db.execute(sql`SELECT 1`);
+    log('Database connection successful');
 
-  app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
-    const status = err.status || err.statusCode || 500;
-    const message = err.message || "Internal Server Error";
-    console.error('Error:', err);  // Add error logging
-    res.status(status).json({ message });
-  });
+    registerRoutes(app);
+    const server = createServer(app);
 
-  if (app.get("env") === "development") {
-    await setupVite(app, server);
-    // Development port
-    const PORT = 5000;
-    server.listen(PORT, "0.0.0.0", () => {
-      log(`Development server running on port ${PORT}`);
+    app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
+      const status = err.status || err.statusCode || 500;
+      const message = err.message || "Internal Server Error";
+      console.error('Error:', err);  // Add error logging
+      res.status(status).json({ message });
     });
-  } else {
-    serveStatic(app);
-    // Production (Vercel) port
-    const PORT = process.env.PORT || 3000;
-    server.listen(PORT, () => {
-      log(`Server running on port ${PORT}`);
-    });
+
+    if (app.get("env") === "development") {
+      await setupVite(app, server);
+      // Development port
+      const PORT = 5000;
+      server.listen(PORT, "0.0.0.0", () => {
+        log(`Development server running on port ${PORT}`);
+      });
+    } else {
+      serveStatic(app);
+      // Production (Vercel) port
+      const PORT = process.env.PORT || 3000;
+      server.listen(PORT, () => {
+        log(`Server running on port ${PORT}`);
+      });
+    }
+  } catch (error) {
+    console.error('Failed to initialize server:', error);
+    process.exit(1);
   }
 })().catch(error => {
   console.error('Server initialization error:', error);

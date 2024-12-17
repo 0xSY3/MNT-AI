@@ -124,6 +124,31 @@ For each issue:
 4. Reference specific lines of code where applicable
 5. Consider Mantle L2-specific implications`;
 
+const TEST_GENERATION_MESSAGE = `You are a smart contract test suite generator specialized in creating comprehensive tests for Solidity contracts on the Mantle Network. Generate tests that:
+
+1. Cover all major contract functionality
+2. Include unit tests for individual functions
+3. Add integration tests for contract interactions
+4. Implement security-focused test cases
+5. Include gas optimization tests
+6. Consider Mantle L2-specific scenarios
+
+Format each test case in this structure:
+{
+  "name": "Test case name",
+  "description": "What this test verifies",
+  "code": "Complete test code",
+  "type": "unit|integration|security|gas",
+  "coverage": {
+    "functions": ["Function names covered"],
+    "lines": "Percentage of lines covered"
+  },
+  "expected": {
+    "result": "Expected test outcome",
+    "gasEstimate": "Estimated gas cost if applicable"
+  }
+}`;
+
 router.post('/chat', async (req, res) => {
   try {
     const { message } = req.body;
@@ -220,6 +245,63 @@ Include detailed comments explaining Mantle-specific optimizations and security 
   } catch (error) {
     console.error('Contract Generation Error:', error);
     res.status(500).json({ error: error instanceof Error ? error.message : 'Failed to generate contract' });
+  }
+});
+
+router.post('/generate-tests', async (req, res) => {
+  try {
+    const { code } = req.body;
+    
+    if (!code) {
+      return res.status(400).json({ error: 'Contract code is required' });
+    }
+
+    if (!process.env.OPENAI_API_KEY) {
+      throw new Error('OpenAI API key not configured');
+    }
+
+    const openai = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY
+    });
+
+    const prompt = `Generate a comprehensive test suite for this Solidity smart contract:
+
+${code}
+
+Create tests that:
+1. Cover all major contract functionality
+2. Include unit tests for individual functions
+3. Add integration tests for contract interactions
+4. Implement security-focused test cases
+5. Include gas optimization tests
+6. Consider Mantle L2-specific scenarios
+
+Return an array of test cases in the specified JSON format with name, description, code, type, coverage, and expected fields.`;
+
+    const completion = await openai.chat.completions.create({
+      model: "gpt-3.5-turbo",
+      messages: [
+        { role: "system", content: TEST_GENERATION_MESSAGE },
+        { role: "user", content: prompt }
+      ],
+      temperature: 0.2,
+      max_tokens: 4000
+    });
+
+    const testsText = completion.choices[0].message.content || '';
+    
+    // Extract JSON from the response
+    const jsonMatch = testsText.match(/\[[\s\S]*\]/);
+    if (!jsonMatch) {
+      throw new Error('Invalid test format received');
+    }
+
+    const tests = JSON.parse(jsonMatch[0]);
+    
+    res.json(tests);
+  } catch (error) {
+    console.error('Test Generation Error:', error);
+    res.status(500).json({ error: error instanceof Error ? error.message : 'Failed to generate tests' });
   }
 });
 

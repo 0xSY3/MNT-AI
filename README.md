@@ -60,7 +60,7 @@ npm install
 
 3. Configure environment variables:
    - Create a new file `.env` in the root directory
-   - Add your OpenAI API key:
+   - Add your OpenAI API key and PostgreSQL Database Configuration:
 ```
 # OpenAI API Key (required for AI features)
 OPENAI_API_KEY=your_openai_api_key_here
@@ -80,8 +80,6 @@ DATABASE_URL=
 npm run dev
 ```
 
-The application will be available at `https://mntdevai.replit.app/`
-
 ## Directory Structure
 
 ```
@@ -93,7 +91,6 @@ The application will be available at `https://mntdevai.replit.app/`
 │   │   └── pages/
 ├── server/            # Backend Express server
 │   └── routes/
-└── test_contracts/    # Sample smart contracts
 ```
 
 ## Contributing

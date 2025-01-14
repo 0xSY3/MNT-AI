@@ -44,7 +44,7 @@ An AI-powered development platform for building, analyzing, and optimizing smart
 
 - Frontend: React + TypeScript + Vite
 - Backend: Express + Node.js
-- AI Integration: OpenAI GPT-4
+- AI Integration: OpenAI 
 - UI Components: Radix UI + Tailwind CSS
 - Smart Contract Testing: Hardhat
 - Data Visualization: D3.js + Recharts

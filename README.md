@@ -62,7 +62,17 @@ npm install
    - Create a new file `.env` in the root directory
    - Add your OpenAI API key:
 ```
-OPENAI_API_KEY=your_api_key_here
+# OpenAI API Key (required for AI features)
+OPENAI_API_KEY=your_openai_api_key_here
+
+# PostgreSQL Database Configuration
+PGHOST=
+PGUSER=
+PGPASSWORD=
+PGDATABASE=
+PGPORT=
+DATABASE_URL=
+
 ```
 
 4. Start the development server:

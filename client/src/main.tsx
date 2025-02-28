@@ -5,7 +5,7 @@ import "./index.css";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "./lib/queryClient";
 import { Toaster } from "@/components/ui/toaster";
-import Navbar from "./components/Navbar";
+import { Navbar } from "./components/ui/navbar";
 import Home from "./pages/Home";
 import ContractBuilder from "./pages/ContractBuilder";
 import Decoder from "./pages/Decoder";
@@ -18,7 +18,7 @@ function Router() {
   return (
     <div className="min-h-screen bg-background text-foreground">
       <Navbar />
-      <main className="container mx-auto px-4 py-8">
+      <main className="mx-auto px-4 py-8">
         <Switch>
           <Route path="/" component={Home} />
           <Route path="/contract-builder" component={ContractBuilder} />

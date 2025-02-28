@@ -27,7 +27,7 @@ export function Navbar({ isScrolled = false }: NavbarProps) {
   const navItems = ['Contract Builder', 'Explorer', 'Templates', 'Community'];
 
   return (
-    <nav className={`fixed top-0 left-0 right-0 w-full border-b border-purple-500/10 backdrop-blur-md z-50 
+    <nav className={`fixed top-0 left-0 right-0 w-full border-bottom border-purple-500 backdrop-blur-md z-50
       transition-all duration-300 ${scrollState ? 'bg-black/80 py-2 sm:py-3' : 'bg-transparent py-3 sm:py-4'}`}>
       <div className="max-w-6xl mx-auto px-4 sm:px-6">
         <div className="flex justify-between items-center">
@@ -36,7 +36,7 @@ export function Navbar({ isScrolled = false }: NavbarProps) {
               border border-purple-500/20">
               <Brain className="w-4 h-4 sm:w-5 sm:h-5 text-purple-400" />
             </div>
-            <span className="text-lg sm:text-xl font-bold text-white">
+            <span className="text-xl sm:text-2xl font-bold text-white">
               MNT<span className="text-purple-400">DEV</span>AI
             </span>
           </Link>
@@ -47,7 +47,7 @@ export function Navbar({ isScrolled = false }: NavbarProps) {
               <Link 
                 key={item}
                 href={`/${item.toLowerCase().replace(' ', '-')}`}
-                className="text-sm font-medium text-white/80 hover:text-purple-400 
+                className="text-base font-medium text-white/80 hover:text-purple-400
                   hover:-translate-y-0.5 transition-all duration-200"
               >
                 {item}

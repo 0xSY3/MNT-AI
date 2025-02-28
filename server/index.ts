@@ -66,7 +66,7 @@ app.use((req, res, next) => {
 (async () => {
   try {
     // Test database connection
-    const result = await db.execute(sql`SELECT 1`);
+    await db.run(sql`SELECT 1`);
     log('Database connection successful');
 
     registerRoutes(app);
@@ -82,7 +82,7 @@ app.use((req, res, next) => {
     if (app.get("env") === "development") {
       await setupVite(app, server);
       // Development port
-      const PORT = 5000;
+      const PORT = 5003;
       server.listen(PORT, "0.0.0.0", () => {
         log(`Development server running on port ${PORT}`);
       });
